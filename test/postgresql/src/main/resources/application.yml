@@ -1,0 +1,17 @@
+ravcube:
+  testcontainers:
+    postgres:
+      version: 18-alpine
+      database: test
+      username: test
+      password: test
+
+spring:
+  datasource:
+    url: jdbc:tc:postgresql:${ravcube.testcontainers.postgres.version}:///${ravcube.testcontainers.postgres.database}
+    username: ${ravcube.testcontainers.postgres.username}
+    password: ${ravcube.testcontainers.postgres.password}
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
