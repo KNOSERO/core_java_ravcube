@@ -1,0 +1,5 @@
+ravcube:
+  testcontainers:
+    postgres:
+      # override only when needed, e.g.:
+      # password: my-secret
