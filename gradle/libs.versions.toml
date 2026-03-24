@@ -21,6 +21,7 @@ spring-kafka = "3.3.10"
 # Test and annotation tooling
 junit-jupiter = "5.10.2"
 junit-jupiter-engine = "5.11.3"
+junit-platform = "1.11.3"
 lombok = "1.18.34"
 mockito-core = "5.10.0"
 testcontainers = "1.20.4"
@@ -67,7 +68,7 @@ testcontainers-kafka = { module = "org.testcontainers:kafka", version.ref = "tes
 # Test and annotation tooling
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
 junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit-jupiter-engine" }
-junit-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+junit-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit-platform" }
 lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
 mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito-core" }
 
