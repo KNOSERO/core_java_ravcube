@@ -1,4 +1,4 @@
-package com.ravcube.lib.event.service.listener;
+package com.ravcube.lib.event.listener;
 
 import com.ravcube.lib.event.inteface.AbstractListener;
 import com.ravcube.lib.event.DomainEvent;

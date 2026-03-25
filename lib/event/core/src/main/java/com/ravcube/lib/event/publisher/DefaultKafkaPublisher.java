@@ -1,4 +1,4 @@
-package com.ravcube.lib.event.service.publisher;
+package com.ravcube.lib.event.publisher;
 
 import com.ravcube.lib.event.DomainEvent;
 import com.ravcube.lib.event.enums.EventSource;
@@ -7,7 +7,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 
 import java.util.Objects;
 
-public class DefaultKafkaRollbackPublisher<E extends DomainEvent> extends AbstractRollbackPublisher<E> {
+public class DefaultKafkaPublisher<E extends DomainEvent> extends AbstractCommitPublisher<E> {
 
     private KafkaPublishSupport<E> kafkaPublisher;
 
@@ -18,7 +18,7 @@ public class DefaultKafkaRollbackPublisher<E extends DomainEvent> extends Abstra
 
     @Override
     public EventSource source() {
-        return EventSource.KAFKA_AFTER_ROLLBACK;
+        return EventSource.KAFKA_AFTER_COMMIT;
     }
 
     @Autowired

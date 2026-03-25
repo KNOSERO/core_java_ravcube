@@ -2,7 +2,6 @@ package com.ravcube.lib.event.listener;
 
 
 import com.ravcube.lib.event.domain.KafkaDomainEvent;
-import com.ravcube.lib.event.service.listener.DefaultKafkaCommitListener;
 import org.springframework.stereotype.Component;
 
 @Component

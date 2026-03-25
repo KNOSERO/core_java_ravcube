@@ -1,7 +1,6 @@
 package com.ravcube.lib.event.listener;
 
 import com.ravcube.lib.event.domain.SpringDomainEvent;
-import com.ravcube.lib.event.service.listener.DefaultRollbackListener;
 import org.springframework.stereotype.Component;
 
 import java.util.concurrent.atomic.AtomicBoolean;

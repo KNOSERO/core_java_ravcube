@@ -1,4 +1,4 @@
-package com.ravcube.lib.event.service.kafka;
+package com.ravcube.lib.event.kafka;
 
 import com.ravcube.lib.event.DomainEvent;
 import com.ravcube.lib.event.enums.EventSource;

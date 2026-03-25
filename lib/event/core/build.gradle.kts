@@ -10,7 +10,6 @@ dependencies {
     implementation(project(":lib:common"))
     api(project(":lib:event:api"))
     api(project(":lib:event:builder"))
-    api(project(":lib:event:kafka"))
     api(libs.spring.context)
     api(libs.spring.tx)
 

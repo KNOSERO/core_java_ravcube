@@ -1,4 +1,4 @@
-package com.ravcube.lib.event.service.publisher;
+package com.ravcube.lib.event.publisher;
 
 import com.ravcube.lib.event.inteface.AbstractPublisher;
 import com.ravcube.lib.event.DomainEvent;
