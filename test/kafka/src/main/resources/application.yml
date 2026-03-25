@@ -1,0 +1,5 @@
+ravcube:
+  testcontainers:
+    kafka:
+      enabled: true
+      image: apache/kafka-native:3.9.0

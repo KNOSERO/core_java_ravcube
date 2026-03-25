@@ -11,6 +11,7 @@ dependencies {
     api(project(":lib:event:api"))
     api(project(":lib:event:builder"))
     api(libs.spring.context)
+    api(libs.spring.kafka)
     api(libs.spring.tx)
 
     testImplementation(libs.junit.jupiter)
