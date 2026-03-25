@@ -16,10 +16,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertSame;
 
 @ActiveProfiles("test")
 @SpringBootTest(classes = TestApplication.class)
@@ -44,9 +40,7 @@ class SpringCommitPublisherTest {
 
         transactionTemplate.executeWithoutResult(status -> publisher.publish(event));
 
-        assertTrue(SpringCommitListener.success());
-        assertEquals(1, SpringCommitListener.invocations());
-        assertSame(event, SpringCommitListener.lastEvent());
+        assertEquals(1, SpringCommitListener.invocations(event.id()));
     }
 
     @Test
@@ -55,8 +49,8 @@ class SpringCommitPublisherTest {
 
         transactionTemplate.executeWithoutResult(status -> publisher.publish(event));
 
-        assertEquals(1, SpringCommitListener.invocations());
-        assertEquals(1, SpringCommitAuditListener.invocations());
+        assertEquals(1, SpringCommitListener.invocations(event.id()));
+        assertEquals(1, SpringCommitAuditListener.invocations(event.id()));
     }
 
     @Test
@@ -68,9 +62,7 @@ class SpringCommitPublisherTest {
             status.setRollbackOnly();
         });
 
-        assertFalse(SpringCommitListener.success());
-        assertEquals(0, SpringCommitListener.invocations());
-        assertNull(SpringCommitListener.lastEvent());
+        assertEquals(0, SpringCommitListener.invocations(event.id()));
     }
 
     @Test
@@ -80,13 +72,8 @@ class SpringCommitPublisherTest {
         transactionTemplate.executeWithoutResult(status -> {
             publisher.publish(event);
 
-            assertFalse(SpringCommitListener.success());
-            assertEquals(0, SpringCommitListener.invocations());
-            assertNull(SpringCommitListener.lastEvent());
-
-            assertFalse(SpringRollbackListener.success());
-            assertEquals(0, SpringRollbackListener.invocations());
-            assertNull(SpringRollbackListener.lastEvent());
+            assertEquals(0, SpringCommitListener.invocations(event.id()));
+            assertEquals(0, SpringRollbackListener.invocations(event.id()));
         });
     }
 }

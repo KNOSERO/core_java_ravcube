@@ -1,25 +1,26 @@
 package com.ravcube.lib.event.listener;
 
 import com.ravcube.lib.event.domain.SpringDomainEvent;
+import com.ravcube.lib.event.domain.execution.EventExecutionLedger;
 import org.springframework.stereotype.Component;
 
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.UUID;
 
 @Component
 public class SpringCommitAuditListener extends DefaultCommitListener<SpringDomainEvent> {
 
-    private static final AtomicInteger INVOCATIONS = new AtomicInteger();
+    private static final EventExecutionLedger<SpringDomainEvent, UUID> LEDGER = EventExecutionLedger.of(SpringDomainEvent::id);
 
     @Override
     public void on(SpringDomainEvent event) {
-        INVOCATIONS.incrementAndGet();
+        LEDGER.register(event);
     }
 
     public static void reset() {
-        INVOCATIONS.set(0);
+        LEDGER.reset();
     }
 
-    public static int invocations() {
-        return INVOCATIONS.get();
+    public static int invocations(UUID eventId) {
+        return LEDGER.invocations(eventId);
     }
 }

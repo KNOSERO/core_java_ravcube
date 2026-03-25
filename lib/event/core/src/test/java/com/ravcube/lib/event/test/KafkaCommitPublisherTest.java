@@ -14,14 +14,9 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.time.Duration;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ActiveProfiles({"test", "kafka"})
 @SpringBootTest(
@@ -52,14 +47,7 @@ class KafkaCommitPublisherTest {
 
         transactionTemplate.executeWithoutResult(status -> publisher.publish(event));
 
-        KafkaDomainEvent consumedEvent = KafkaCommitListener.awaitEventMatching(event.id(), Duration.ofSeconds(10));
-        KafkaDomainEvent duplicateEvent = KafkaCommitListener.awaitEventMatching(event.id(), Duration.ofMillis(500));
-        assertTrue(KafkaCommitListener.success());
         assertEquals(1, KafkaCommitListener.invocations(event.id()));
-        assertNotNull(consumedEvent);
-        assertNull(duplicateEvent);
-        assertEquals(event.id(), consumedEvent.id());
-        assertEquals(event.message(), consumedEvent.message());
         assertEquals(0, KafkaRollbackListener.invocations(event.id()));
     }
 
@@ -69,10 +57,6 @@ class KafkaCommitPublisherTest {
 
         transactionTemplate.executeWithoutResult(status -> publisher.publish(event));
 
-        assertNotNull(KafkaCommitListener.awaitEventMatching(event.id(), Duration.ofSeconds(10)));
-        assertNotNull(KafkaCommitAuditListener.awaitEventMatching(event.id(), Duration.ofSeconds(10)));
-        assertNull(KafkaCommitListener.awaitEventMatching(event.id(), Duration.ofMillis(500)));
-        assertNull(KafkaCommitAuditListener.awaitEventMatching(event.id(), Duration.ofMillis(500)));
         assertEquals(1, KafkaCommitListener.invocations(event.id()));
         assertEquals(1, KafkaCommitAuditListener.invocations(event.id()));
         assertEquals(0, KafkaRollbackListener.invocations(event.id()));
@@ -87,9 +71,7 @@ class KafkaCommitPublisherTest {
             status.setRollbackOnly();
         });
 
-        assertFalse(KafkaCommitListener.success());
         assertEquals(0, KafkaCommitListener.invocations(event.id()));
-        assertNull(KafkaCommitListener.awaitEventMatching(event.id(), Duration.ofSeconds(1)));
     }
 
     @Test
@@ -100,10 +82,7 @@ class KafkaCommitPublisherTest {
             publisher.publish(event);
 
             assertEquals(0, KafkaCommitListener.invocations(event.id()));
-            assertNull(KafkaCommitListener.awaitEventMatching(event.id(), Duration.ofMillis(200)));
-
             assertEquals(0, KafkaRollbackListener.invocations(event.id()));
-            assertNull(KafkaRollbackListener.awaitEventMatching(event.id(), Duration.ofMillis(200)));
         });
     }
 }

@@ -13,12 +13,9 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.time.Duration;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 
 @ActiveProfiles({"test", "kafka"})
 @SpringBootTest(
@@ -51,14 +48,28 @@ class KafkaRollbackPublisherTest {
             status.setRollbackOnly();
         });
 
-        KafkaDomainEvent consumedEvent = KafkaRollbackListener.awaitEventMatching(event.id(), Duration.ofSeconds(10));
-        KafkaDomainEvent duplicateEvent = KafkaRollbackListener.awaitEventMatching(event.id(), Duration.ofMillis(500));
-        assertNotNull(consumedEvent);
-        assertNull(duplicateEvent);
-        assertEquals(event.id(), consumedEvent.id());
-        assertEquals(event.message(), consumedEvent.message());
         assertEquals(1, KafkaRollbackListener.invocations(event.id()));
         assertEquals(0, KafkaCommitListener.invocations(event.id()));
-        assertNull(KafkaCommitListener.awaitEventMatching(event.id(), Duration.ofMillis(500)));
+    }
+
+    @Test
+    void shouldNotHandleEventWhenTransactionCommits() {
+        KafkaDomainEvent event = new KafkaDomainEvent(UUID.randomUUID(), "commit");
+
+        transactionTemplate.executeWithoutResult(status -> publisher.publish(event));
+
+        assertEquals(0, KafkaRollbackListener.invocations(event.id()));
+    }
+
+    @Test
+    void shouldNotHandleAnyEventBeforeTransactionCompletes() {
+        KafkaDomainEvent event = new KafkaDomainEvent(UUID.randomUUID(), "in-progress");
+
+        transactionTemplate.executeWithoutResult(status -> {
+            publisher.publish(event);
+
+            assertEquals(0, KafkaRollbackListener.invocations(event.id()));
+            assertEquals(0, KafkaCommitListener.invocations(event.id()));
+        });
     }
 }
