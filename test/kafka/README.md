@@ -34,7 +34,7 @@ Plik konfiguracyjny:
 Domyslne wartosci:
 
 - `ravcube.testcontainers.kafka.enabled=true`
-- `ravcube.testcontainers.kafka.image=apache/kafka-native:3.9.0`
+- `ravcube.testcontainers.kafka.image=confluentinc/cp-kafka:7.7.0`
 
 Wlasciwosci do nadpisania:
 
@@ -49,7 +49,7 @@ W `application-test.yml` nadpisz tylko to, co chcesz zmienic:
 ravcube:
   testcontainers:
     kafka:
-      image: apache/kafka-native:3.9.1
+      image: confluentinc/cp-kafka:7.7.1
 ```
 
 ## Uruchamianie

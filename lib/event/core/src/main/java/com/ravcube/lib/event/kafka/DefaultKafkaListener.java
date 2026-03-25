@@ -23,7 +23,7 @@ public abstract class DefaultKafkaListener {
         eventListener.on(typed(), payload);
     }
 
-    private String[] topics() {
+    public String[] topics() {
         final EventSource typed = typed();
         return eventListener.getTopics(typed).stream()
                 .map(typed::formatTopic)

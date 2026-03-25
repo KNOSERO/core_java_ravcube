@@ -10,11 +10,13 @@ dependencies {
     implementation(project(":lib:common"))
     api(project(":lib:event:api"))
     api(project(":lib:event:builder"))
+    implementation(libs.jackson.databind)
     api(libs.spring.context)
     api(libs.spring.kafka)
     api(libs.spring.tx)
 
     testImplementation(libs.junit.jupiter)
+    testImplementation(project(":test:kafka"))
     testImplementation(libs.spring.test)
     runtimeOnly(libs.junit.launcher)
 }

@@ -2,4 +2,4 @@ ravcube:
   testcontainers:
     kafka:
       enabled: true
-      image: apache/kafka-native:3.9.0
+      image: confluentinc/cp-kafka:7.7.0
