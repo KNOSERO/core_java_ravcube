@@ -5,14 +5,12 @@ import com.ravcube.lib.event.domain.KafkaDomainEvent;
 import com.ravcube.lib.event.inteface.EventPublisher;
 import com.ravcube.lib.event.listener.KafkaCommitListener;
 import com.ravcube.lib.event.listener.KafkaRollbackListener;
-import com.ravcube.lib.event.publisher.DefaultKafkaRollbackPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Duration;
@@ -23,7 +21,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 @ActiveProfiles({"test", "kafka"})
-@SpringBootTest(classes = TestApplication.class)
+@SpringBootTest(
+        classes = TestApplication.class,
+        properties = {
+                "spring.kafka.consumer.group-id=event-core-kafka-rollback-test"
+        }
+)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 class KafkaRollbackPublisherTest {
 
     @Autowired
@@ -47,10 +51,14 @@ class KafkaRollbackPublisherTest {
             status.setRollbackOnly();
         });
 
-        KafkaDomainEvent consumedEvent = KafkaRollbackListener.awaitEvent(Duration.ofSeconds(10));
+        KafkaDomainEvent consumedEvent = KafkaRollbackListener.awaitEventMatching(event.id(), Duration.ofSeconds(10));
+        KafkaDomainEvent duplicateEvent = KafkaRollbackListener.awaitEventMatching(event.id(), Duration.ofMillis(500));
         assertNotNull(consumedEvent);
+        assertNull(duplicateEvent);
         assertEquals(event.id(), consumedEvent.id());
         assertEquals(event.message(), consumedEvent.message());
-        assertNull(KafkaCommitListener.awaitEvent(Duration.ofMillis(500)));
+        assertEquals(1, KafkaRollbackListener.invocations(event.id()));
+        assertEquals(0, KafkaCommitListener.invocations(event.id()));
+        assertNull(KafkaCommitListener.awaitEventMatching(event.id(), Duration.ofMillis(500)));
     }
 }

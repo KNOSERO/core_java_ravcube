@@ -1,4 +1,4 @@
-package com.ravcube.lib.data.test;
+package com.ravcube.lib.data.service;
 
 import com.querydsl.core.types.EntityPath;
 import com.querydsl.core.types.OrderSpecifier;

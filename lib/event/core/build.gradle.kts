@@ -1,4 +1,5 @@
 plugins {
+    alias(libs.plugins.kotlin.jvm)
     `java-library`
 }
 
@@ -9,13 +10,13 @@ repositories {
 dependencies {
     implementation(project(":lib:common"))
     api(project(":lib:event:api"))
-    api(project(":lib:event:builder"))
     implementation(libs.jackson.databind)
     api(libs.spring.context)
     api(libs.spring.kafka)
     api(libs.spring.tx)
 
     testImplementation(libs.junit.jupiter)
+    testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testImplementation(project(":test:kafka"))
     testImplementation(libs.spring.test)
     runtimeOnly(libs.junit.launcher)
