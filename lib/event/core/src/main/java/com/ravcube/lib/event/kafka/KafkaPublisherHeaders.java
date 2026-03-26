@@ -1,4 +1,4 @@
-package com.ravcube.lib.event.publisher;
+package com.ravcube.lib.event.kafka;
 
 import org.apache.kafka.clients.producer.ProducerRecord;
 

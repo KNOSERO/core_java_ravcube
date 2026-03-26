@@ -2,6 +2,7 @@ package com.ravcube.lib.event.publisher;
 
 import com.ravcube.lib.event.DomainEvent;
 import com.ravcube.lib.event.enums.EventSource;
+import com.ravcube.lib.event.kafka.KafkaPublishSupport;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
 
