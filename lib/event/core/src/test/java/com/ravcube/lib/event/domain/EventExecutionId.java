@@ -1,4 +1,4 @@
-package com.ravcube.lib.event.domain.execution;
+package com.ravcube.lib.event.domain;
 
 import java.util.Objects;
 

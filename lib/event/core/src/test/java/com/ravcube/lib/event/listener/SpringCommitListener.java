@@ -1,7 +1,6 @@
 package com.ravcube.lib.event.listener;
 
 import com.ravcube.lib.event.domain.SpringDomainEvent;
-import com.ravcube.lib.event.domain.execution.EventExecutionLedger;
 import org.springframework.stereotype.Component;
 
 import java.util.UUID;
@@ -9,7 +8,7 @@ import java.util.UUID;
 @Component
 public class SpringCommitListener extends DefaultCommitListener<SpringDomainEvent> {
 
-    private static final EventExecutionLedger<SpringDomainEvent, UUID> LEDGER = EventExecutionLedger.of(SpringDomainEvent::id);
+    private static final EventInvocationTracker<SpringDomainEvent, UUID> LEDGER = EventInvocationTracker.of(SpringDomainEvent::id);
 
     @Override
     public void on(SpringDomainEvent event) {

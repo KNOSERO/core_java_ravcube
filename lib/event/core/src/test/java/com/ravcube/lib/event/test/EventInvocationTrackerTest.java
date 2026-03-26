@@ -1,5 +1,6 @@
-package com.ravcube.lib.event.domain.execution;
+package com.ravcube.lib.event.test;
 
+import com.ravcube.lib.event.listener.EventInvocationTracker;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -12,11 +13,11 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class EventExecutionLedgerTest {
+class EventInvocationTrackerTest {
 
     @Test
     void shouldTrackPerEventInvocations() {
-        EventExecutionLedger<TestEvent, UUID> ledger = EventExecutionLedger.of(TestEvent::id);
+        EventInvocationTracker<TestEvent, UUID> ledger = EventInvocationTracker.of(TestEvent::id);
         UUID firstId = UUID.randomUUID();
         UUID secondId = UUID.randomUUID();
 
@@ -31,7 +32,7 @@ class EventExecutionLedgerTest {
 
     @Test
     void shouldResetInvocations() {
-        EventExecutionLedger<TestEvent, UUID> ledger = EventExecutionLedger.of(TestEvent::id);
+        EventInvocationTracker<TestEvent, UUID> ledger = EventInvocationTracker.of(TestEvent::id);
         UUID id = UUID.randomUUID();
 
         ledger.register(new TestEvent(id, "before-reset"));
@@ -44,7 +45,7 @@ class EventExecutionLedgerTest {
 
     @Test
     void shouldHandleConcurrentEventRegistrations() throws InterruptedException {
-        EventExecutionLedger<TestEvent, UUID> ledger = EventExecutionLedger.of(TestEvent::id);
+        EventInvocationTracker<TestEvent, UUID> ledger = EventInvocationTracker.of(TestEvent::id);
         List<UUID> ids = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
             ids.add(UUID.randomUUID());
@@ -67,7 +68,7 @@ class EventExecutionLedgerTest {
 
     @Test
     void shouldWaitForInvocationsUsingDefaultDelay() throws InterruptedException {
-        EventExecutionLedger<TestEvent, UUID> ledger = EventExecutionLedger.of(TestEvent::id);
+        EventInvocationTracker<TestEvent, UUID> ledger = EventInvocationTracker.of(TestEvent::id);
         UUID id = UUID.randomUUID();
         Thread registrar = new Thread(() -> {
             sleep(100L);

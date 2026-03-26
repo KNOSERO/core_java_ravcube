@@ -1,7 +1,6 @@
 package com.ravcube.lib.event.listener;
 
 import com.ravcube.lib.event.domain.KafkaDomainEvent;
-import com.ravcube.lib.event.domain.execution.EventInvocationTracker;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
