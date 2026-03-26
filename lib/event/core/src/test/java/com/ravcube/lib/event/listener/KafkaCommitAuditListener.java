@@ -4,6 +4,7 @@ import com.ravcube.lib.event.domain.KafkaDomainEvent;
 import com.ravcube.lib.event.domain.execution.EventExecutionLedger;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.util.UUID;
 
 @Component
@@ -21,6 +22,6 @@ public class KafkaCommitAuditListener extends DefaultKafkaCommitListener<KafkaDo
     }
 
     public static int invocations(UUID eventId) {
-        return LEDGER.invocations(eventId);
+        return LEDGER.invocations(eventId, Duration.ofSeconds(5));
     }
 }

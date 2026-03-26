@@ -10,7 +10,7 @@ import java.util.function.Function;
 
 public final class EventExecutionLedger<E, K> {
 
-    private static final Duration DEFAULT_INVOCATIONS_DELAY = Duration.ofMillis(1500);
+    private static final Duration DEFAULT_INVOCATIONS_DELAY = Duration.ofMillis(200);
     private static final long INVOCATIONS_POLL_NANOS = TimeUnit.MILLISECONDS.toNanos(10L);
 
     private final Function<E, K> eventIdResolver;
