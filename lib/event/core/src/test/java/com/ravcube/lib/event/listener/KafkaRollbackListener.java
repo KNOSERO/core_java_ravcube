@@ -1,7 +1,7 @@
 package com.ravcube.lib.event.listener;
 
 import com.ravcube.lib.event.domain.KafkaDomainEvent;
-import com.ravcube.lib.event.domain.execution.EventExecutionLedger;
+import com.ravcube.lib.event.domain.execution.EventInvocationTracker;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -10,7 +10,7 @@ import java.util.UUID;
 @Component
 public class KafkaRollbackListener extends DefaultKafkaRollbackListener<KafkaDomainEvent> {
 
-    private static final EventExecutionLedger<KafkaDomainEvent, UUID> LEDGER = EventExecutionLedger.of(KafkaDomainEvent::id);
+    private static final EventInvocationTracker<KafkaDomainEvent, UUID> LEDGER = EventInvocationTracker.of(KafkaDomainEvent::id);
 
     @Override
     public void on(KafkaDomainEvent event) {

@@ -8,7 +8,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
-public final class EventExecutionLedger<E, K> {
+public final class EventInvocationTracker<E, K> {
 
     private static final Duration DEFAULT_INVOCATIONS_DELAY = Duration.ofMillis(200);
     private static final long INVOCATIONS_POLL_NANOS = TimeUnit.MILLISECONDS.toNanos(10L);
@@ -16,12 +16,12 @@ public final class EventExecutionLedger<E, K> {
     private final Function<E, K> eventIdResolver;
     private final ConcurrentMap<EventExecutionId<K>, AtomicInteger> invocationsByEvent = new ConcurrentHashMap<>();
 
-    private EventExecutionLedger(Function<E, K> eventIdResolver) {
+    private EventInvocationTracker(Function<E, K> eventIdResolver) {
         this.eventIdResolver = Objects.requireNonNull(eventIdResolver, "eventIdResolver cannot be null");
     }
 
-    public static <E, K> EventExecutionLedger<E, K> of(Function<E, K> eventIdResolver) {
-        return new EventExecutionLedger<>(eventIdResolver);
+    public static <E, K> EventInvocationTracker<E, K> of(Function<E, K> eventIdResolver) {
+        return new EventInvocationTracker<>(eventIdResolver);
     }
 
     public void register(E event) {
