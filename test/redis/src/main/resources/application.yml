@@ -1,0 +1,5 @@
+ravcube:
+  testcontainers:
+    redis:
+      enabled: true
+      image: redis:7.2-alpine

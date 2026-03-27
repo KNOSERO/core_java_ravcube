@@ -1,0 +1,12 @@
+spring:
+  config:
+    activate:
+      on-profile: redis
+  data:
+    redis:
+      host: ${RAVCUBE_REDIS_HOST:localhost}
+      port: ${RAVCUBE_REDIS_PORT:6379}
+      database: ${RAVCUBE_REDIS_DATABASE:0}
+      username: ${RAVCUBE_REDIS_USERNAME:}
+      password: ${RAVCUBE_REDIS_PASSWORD:}
+      timeout: ${RAVCUBE_REDIS_TIMEOUT:2s}
