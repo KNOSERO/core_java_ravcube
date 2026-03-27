@@ -18,7 +18,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@ActiveProfiles({"test", "kafka"})
+@ActiveProfiles({"test", "kafka", "test-kafka"})
 @SpringBootTest(
         classes = TestApplication.class,
         properties = {

@@ -6,7 +6,6 @@ import org.springframework.boot.env.EnvironmentPostProcessor;
 import org.springframework.core.Ordered;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.MapPropertySource;
-import org.springframework.util.StringUtils;
 import org.testcontainers.kafka.ConfluentKafkaContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -23,10 +22,6 @@ public final class KafkaTestcontainerEnvironmentPostProcessor implements Environ
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
         if (!environment.getProperty(KAFKA_ENABLED_PROPERTY, Boolean.class, true)) {
-            return;
-        }
-
-        if (StringUtils.hasText(environment.getProperty(BOOTSTRAP_SERVERS_PROPERTY))) {
             return;
         }
 

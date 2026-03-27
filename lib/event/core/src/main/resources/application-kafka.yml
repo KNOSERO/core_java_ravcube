@@ -1,0 +1,40 @@
+ravcube:
+  kafka:
+    listener:
+      auto-startup: true
+      missing-topics-fatal: false
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: event-core-kafka
+      auto-offset-reset: latest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      trusted-packages: "*"
+      default-type: java.lang.Object
+
+spring:
+  config:
+    activate:
+      on-profile: kafka
+  kafka:
+    listener:
+      auto-startup: ${ravcube.kafka.listener.auto-startup}
+      missing-topics-fatal: ${ravcube.kafka.listener.missing-topics-fatal}
+    producer:
+      key-serializer: ${ravcube.kafka.producer.key-serializer}
+      value-serializer: ${ravcube.kafka.producer.value-serializer}
+    consumer:
+      group-id: ${ravcube.kafka.consumer.group-id}
+      auto-offset-reset: ${ravcube.kafka.consumer.auto-offset-reset}
+      key-deserializer: ${ravcube.kafka.consumer.key-deserializer}
+      value-deserializer: ${ravcube.kafka.consumer.value-deserializer}
+      properties:
+        spring:
+          json:
+            trusted:
+              packages: ${ravcube.kafka.consumer.trusted-packages}
+            value:
+              default:
+                type: ${ravcube.kafka.consumer.default-type}
