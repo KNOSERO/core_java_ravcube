@@ -1,6 +1,6 @@
 package com.ravcube.lib.search.test;
 
-import com.ravcube.lib.search.doc.SearchTestDocument;
+import com.ravcube.lib.search.document.SearchTestDocument;
 import com.ravcube.lib.search.query.SearchQuery;
 import org.junit.jupiter.api.Test;
 

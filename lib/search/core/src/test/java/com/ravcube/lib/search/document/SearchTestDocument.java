@@ -1,4 +1,4 @@
-package com.ravcube.lib.search.doc;
+package com.ravcube.lib.search.document;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.Document;

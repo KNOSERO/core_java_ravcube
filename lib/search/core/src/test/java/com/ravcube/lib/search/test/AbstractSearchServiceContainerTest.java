@@ -1,8 +1,8 @@
 package com.ravcube.lib.search.test;
 
-import com.ravcube.lib.search.doc.SearchTestDocument;
-import com.ravcube.lib.search.doc.SearchTestRelation;
-import com.ravcube.lib.search.doc.SearchTestRelationDetail;
+import com.ravcube.lib.search.document.SearchTestDocument;
+import com.ravcube.lib.search.document.SearchTestRelation;
+import com.ravcube.lib.search.document.SearchTestRelationDetail;
 import com.ravcube.lib.search.query.SearchPredicate;
 import com.ravcube.lib.search.query.SearchQuery;
 import com.ravcube.lib.search.repo.SearchTestRepository;
