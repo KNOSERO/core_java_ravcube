@@ -1,0 +1,5 @@
+ravcube:
+  testcontainers:
+    elasticsearch:
+      enabled: true
+      image: docker.elastic.co/elasticsearch/elasticsearch:8.14.3

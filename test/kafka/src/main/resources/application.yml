@@ -1,5 +1,5 @@
 ravcube:
   testcontainers:
     kafka:
-      enabled: true
+      enabled: false
       image: confluentinc/cp-kafka:7.7.0

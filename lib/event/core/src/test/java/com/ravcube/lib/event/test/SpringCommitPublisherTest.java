@@ -17,7 +17,6 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@ActiveProfiles("test")
 @SpringBootTest(classes = TestApplication.class)
 class SpringCommitPublisherTest {
 
