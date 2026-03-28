@@ -14,11 +14,12 @@ import org.springframework.data.domain.Sort;
 import java.util.List;
 import java.util.stream.StreamSupport;
 
+import static com.ravcube.lib.data.test.GenericServiceContainerTestBase.TestItemFixtures.specializedItem;
+import static com.ravcube.lib.data.test.GenericServiceContainerTestBase.TestItemFixtures.testItem;
+import static com.ravcube.lib.data.test.GenericServiceContainerTestBase.TestItemFixtures.testItemEntry;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static com.ravcube.lib.data.test.TestItemFixtures.specializedItem;
-import static com.ravcube.lib.data.test.TestItemFixtures.testItem;
-import static com.ravcube.lib.data.test.TestItemFixtures.testItemEntry;
+
 
 class GenericServiceFindAllTest extends GenericServiceContainerTestBase {
 

@@ -4,10 +4,11 @@ import com.ravcube.lib.data.entity.TestItem;
 import com.ravcube.lib.data.entity.TestItemEntry;
 import org.junit.jupiter.api.Test;
 
+import static com.ravcube.lib.data.test.GenericServiceContainerTestBase.TestItemFixtures.testItem;
+import static com.ravcube.lib.data.test.GenericServiceContainerTestBase.TestItemFixtures.testItemEntry;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static com.ravcube.lib.data.test.TestItemFixtures.testItem;
-import static com.ravcube.lib.data.test.TestItemFixtures.testItemEntry;
+
 
 class GenericServiceDeleteTest extends GenericServiceContainerTestBase {
 

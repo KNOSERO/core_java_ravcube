@@ -9,8 +9,9 @@ import org.springframework.data.domain.PageRequest;
 import java.util.List;
 import java.util.Optional;
 
-import static com.ravcube.lib.data.test.TestItemFixtures.testItem;
-import static com.ravcube.lib.data.test.TestItemFixtures.testItemEntry;
+
+import static com.ravcube.lib.data.test.GenericServiceContainerTestBase.TestItemFixtures.testItem;
+import static com.ravcube.lib.data.test.GenericServiceContainerTestBase.TestItemFixtures.testItemEntry;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;

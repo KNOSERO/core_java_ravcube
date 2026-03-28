@@ -1,9 +1,9 @@
-package com.ravcube.lib.data.test;
+package com.ravcube.lib.data.config;
 
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 
 @SpringBootApplication(scanBasePackages = "com.ravcube.lib.data")
 @EntityScan(basePackages = "com.ravcube.lib.data.entity")
-class TestApplication {
+public class TestApplication {
 }

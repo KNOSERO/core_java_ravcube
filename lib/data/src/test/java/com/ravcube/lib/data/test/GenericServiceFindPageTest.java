@@ -6,8 +6,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
+import static com.ravcube.lib.data.test.GenericServiceContainerTestBase.TestItemFixtures.testItem;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static com.ravcube.lib.data.test.TestItemFixtures.testItem;
+
 
 class GenericServiceFindPageTest extends GenericServiceContainerTestBase {
 

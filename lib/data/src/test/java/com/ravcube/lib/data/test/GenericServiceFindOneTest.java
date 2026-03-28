@@ -5,9 +5,10 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
 
+import static com.ravcube.lib.data.test.GenericServiceContainerTestBase.TestItemFixtures.testItem;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static com.ravcube.lib.data.test.TestItemFixtures.testItem;
+
 
 class GenericServiceFindOneTest extends GenericServiceContainerTestBase {
 
