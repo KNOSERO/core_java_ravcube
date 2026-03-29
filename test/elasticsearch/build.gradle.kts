@@ -7,7 +7,7 @@ repositories {
 }
 
 dependencies {
-    api(libs.spring.test)
+    api(project(":test:common"))
     api(libs.testcontainers.elasticsearch)
     runtimeOnly(libs.junit.launcher)
 }

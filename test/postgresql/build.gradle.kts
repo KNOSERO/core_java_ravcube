@@ -7,7 +7,7 @@ repositories {
 }
 
 dependencies {
-    api(libs.spring.test)
+    api(project(":test:common"))
     api(libs.testcontainers.postgresql)
     runtimeOnly(libs.postgresql)
     runtimeOnly(libs.junit.launcher)

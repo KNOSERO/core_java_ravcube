@@ -7,7 +7,7 @@ repositories {
 }
 
 dependencies {
-    api(libs.spring.test)
+    api(project(":test:common"))
     api(libs.spring.kafka)
     api(libs.testcontainers.kafka)
     runtimeOnly(libs.junit.launcher)

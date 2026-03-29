@@ -1,0 +1,6 @@
+ravcube:
+  testcontainers:
+    eureka:
+      enabled: true
+      image: springcloud/eureka:latest
+      count: 1
