@@ -10,12 +10,14 @@ jackson-databind = "2.19.2"
 # Jakarta
 jakarta-annotation = "2.1.1"
 jakarta-persistence = "3.1.0"
+jakarta-servlet = "6.0.0"
 
 # QueryDSL
 querydsl = "5.1.0"
 postgresql = "42.7.4"
 spring-framework = "6.2.11"
 spring-boot = "3.5.6"
+spring-cloud = "2025.0.1"
 spring-kafka = "3.3.10"
 
 # Test and annotation tooling
@@ -42,6 +44,7 @@ guava = { module = "com.google.guava:guava", version.ref = "guava" }
 # Jakarta
 jakarta-annotation-api = { module = "jakarta.annotation:jakarta.annotation-api", version.ref = "jakarta-annotation" }
 jakarta-persistence-api = { module = "jakarta.persistence:jakarta.persistence-api", version.ref = "jakarta-persistence" }
+jakarta-servlet-api = { module = "jakarta.servlet:jakarta.servlet-api", version.ref = "jakarta-servlet" }
 
 # QueryDSL
 querydsl-apt = { module = "com.querydsl:querydsl-apt", version.ref = "querydsl" }
@@ -54,6 +57,11 @@ jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", ver
 postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
 spring-boot-autoconfigure = { module = "org.springframework.boot:spring-boot-autoconfigure", version.ref = "spring-boot" }
 spring-boot-configuration-processor = { module = "org.springframework.boot:spring-boot-configuration-processor", version.ref = "spring-boot" }
+spring-boot-security = { module = "org.springframework.boot:spring-boot-starter-security", version.ref = "spring-boot" }
+spring-boot-oauth2-resource-server = { module = "org.springframework.boot:spring-boot-starter-oauth2-resource-server", version.ref = "spring-boot" }
+spring-cloud-dependencies = { module = "org.springframework.cloud:spring-cloud-dependencies", version.ref = "spring-cloud" }
+spring-cloud-starter-eureka-client = { module = "org.springframework.cloud:spring-cloud-starter-netflix-eureka-client" }
+spring-cloud-starter-openfeign = { module = "org.springframework.cloud:spring-cloud-starter-openfeign" }
 spring-data-jpa = { module = "org.springframework.boot:spring-boot-starter-data-jpa", version.ref = "spring-boot" }
 spring-data-elasticsearch = { module = "org.springframework.boot:spring-boot-starter-data-elasticsearch", version.ref = "spring-boot" }
 spring-data-redis = { module = "org.springframework.boot:spring-boot-starter-data-redis", version.ref = "spring-boot" }

@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: ${ravcube.eureka.app-name:ravcube-service}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${ravcube.eureka.default-zones:http://localhost:8761/eureka/}
+    fetch-registry: ${ravcube.eureka.client.fetch-registry:true}
+    register-with-eureka: ${ravcube.eureka.client.register-with-eureka:true}
+    registry-fetch-interval-seconds: ${ravcube.eureka.client.registry-fetch-interval-seconds:5}
+    instance-info-replication-interval-seconds: ${ravcube.eureka.client.instance-info-replication-interval-seconds:10}
+    initial-instance-info-replication-interval-seconds: ${ravcube.eureka.client.initial-instance-info-replication-interval-seconds:10}
+    eureka-service-url-poll-interval-seconds: ${ravcube.eureka.client.eureka-service-url-poll-interval-seconds:30}
+    eureka-server-connect-timeout-seconds: ${ravcube.eureka.client.eureka-server-connect-timeout-seconds:2}
+    eureka-server-read-timeout-seconds: ${ravcube.eureka.client.eureka-server-read-timeout-seconds:3}
+  instance:
+    lease-renewal-interval-in-seconds: ${ravcube.eureka.instance.lease-renewal-interval-in-seconds:10}
+    lease-expiration-duration-in-seconds: ${ravcube.eureka.instance.lease-expiration-duration-in-seconds:30}
