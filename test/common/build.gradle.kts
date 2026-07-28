@@ -9,6 +9,7 @@ repositories {
 dependencies {
     api(libs.spring.test)
     api(libs.testcontainers.junit.jupiter)
+    testImplementation(libs.junit.jupiter)
     runtimeOnly(libs.junit.launcher)
 }
 

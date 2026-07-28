@@ -1,41 +1,72 @@
 package com.ravcube.test.kafka;
 
 import com.ravcube.test.common.container.SharedContainer;
-import com.ravcube.test.common.env.BaseEnvironmentPostProcessor;
+import com.ravcube.test.common.env.BaseTestcontainerEnvironmentPostProcessor;
 import java.util.Map;
-import org.springframework.boot.SpringApplication;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.testcontainers.kafka.ConfluentKafkaContainer;
 import org.testcontainers.utility.DockerImageName;
 
-public final class KafkaTestcontainerEnvironmentPostProcessor extends BaseEnvironmentPostProcessor {
+public final class KafkaTestcontainerEnvironmentPostProcessor
+        extends BaseTestcontainerEnvironmentPostProcessor<ConfluentKafkaContainer> {
 
     private static final String PROPERTY_SOURCE_NAME = "ravcubeTestKafkaContainer";
+    private static final String KAFKA_PROFILE = "test-kafka";
     private static final String BOOTSTRAP_SERVERS_PROPERTY = "spring.kafka.bootstrap-servers";
     private static final String KAFKA_ENABLED_PROPERTY = "ravcube.testcontainers.kafka.enabled";
     private static final String KAFKA_IMAGE_PROPERTY = "ravcube.testcontainers.kafka.image";
     private static final String DEFAULT_KAFKA_IMAGE = "confluentinc/cp-kafka:7.7.0";
+    private static final String KAFKA_SHUTDOWN_HOOK_NAME = "ravcube-test-kafka-stop";
 
     private static final SharedContainer<ConfluentKafkaContainer> SHARED_KAFKA_CONTAINER = new SharedContainer<>();
 
     @Override
-    public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
-        if (!environment.getProperty(KAFKA_ENABLED_PROPERTY, Boolean.class, true)) {
-            return;
-        }
-
-        String imageName = environment.getProperty(KAFKA_IMAGE_PROPERTY, DEFAULT_KAFKA_IMAGE);
-        ConfluentKafkaContainer kafkaContainer = SHARED_KAFKA_CONTAINER.start(
-                imageName,
-                this::createKafkaContainer,
-                ConfluentKafkaContainer::isRunning,
-                "ravcube-test-kafka-stop"
-        );
-        addFirstPropertySource(environment, PROPERTY_SOURCE_NAME,
-                Map.of(BOOTSTRAP_SERVERS_PROPERTY, kafkaContainer.getBootstrapServers()));
+    protected SharedContainer<ConfluentKafkaContainer> sharedContainer() {
+        return SHARED_KAFKA_CONTAINER;
     }
 
-    private ConfluentKafkaContainer createKafkaContainer(String imageName) {
+    @Override
+    protected String propertySourceName() {
+        return PROPERTY_SOURCE_NAME;
+    }
+
+    @Override
+    protected String profile() {
+        return KAFKA_PROFILE;
+    }
+
+    @Override
+    protected String enabledProperty() {
+        return KAFKA_ENABLED_PROPERTY;
+    }
+
+    @Override
+    protected String imageProperty() {
+        return KAFKA_IMAGE_PROPERTY;
+    }
+
+    @Override
+    protected String defaultImage() {
+        return DEFAULT_KAFKA_IMAGE;
+    }
+
+    @Override
+    protected String shutdownHookName() {
+        return KAFKA_SHUTDOWN_HOOK_NAME;
+    }
+
+    @Override
+    protected java.util.function.Predicate<ConfluentKafkaContainer> runningChecker() {
+        return ConfluentKafkaContainer::isRunning;
+    }
+
+    @Override
+    protected ConfluentKafkaContainer createContainer(String imageName) {
         return new ConfluentKafkaContainer(DockerImageName.parse(imageName));
+    }
+
+    @Override
+    protected Map<String, Object> properties(ConfluentKafkaContainer container, ConfigurableEnvironment environment) {
+        return Map.of(BOOTSTRAP_SERVERS_PROPERTY, container.getBootstrapServers());
     }
 }

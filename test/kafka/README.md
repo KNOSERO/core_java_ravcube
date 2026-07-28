@@ -35,11 +35,13 @@ Domyslne wartosci:
 
 - `ravcube.testcontainers.kafka.enabled=true`
 - `ravcube.testcontainers.kafka.image=confluentinc/cp-kafka:7.7.0`
+- `ravcube.kafka.consumer.trusted-packages=com.ravcube.lib.*`
 
 Wlasciwosci do nadpisania:
 
 - `ravcube.testcontainers.kafka.enabled`
 - `ravcube.testcontainers.kafka.image`
+- `ravcube.kafka.consumer.trusted-packages`
 
 ## Nadpisywanie w module testowanym
 
@@ -49,7 +51,7 @@ W `application-test.yml` nadpisz tylko to, co chcesz zmienic:
 ravcube:
   testcontainers:
     kafka:
-      image: confluentinc/cp-kafka:7.7.1
+      image: confluentinc/cp-kafka:7.7.0
 ```
 
 ## Uruchamianie

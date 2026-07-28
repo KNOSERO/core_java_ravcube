@@ -2,5 +2,5 @@ ravcube:
   testcontainers:
     eureka:
       enabled: true
-      image: springcloud/eureka:latest
+      image: docker.io/springcloud/eureka@sha256:1c59b5c00b2df59933fe7fb39bc3ed0d31342edeb36247dfbf302af01455fc3d
       count: 1

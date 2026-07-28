@@ -11,6 +11,7 @@ interface EurekaTestcontainerConstants {
     String DEFAULT_EUREKA_SERVICE_URL = "http://localhost:8761/eureka/";
     int DEFAULT_EUREKA_SERVER_COUNT = 1;
     int EUREKA_INTERNAL_PORT = 8761;
-    String DEFAULT_EUREKA_IMAGE = "springcloud/eureka:latest";
+    String DEFAULT_EUREKA_IMAGE =
+            "docker.io/springcloud/eureka@sha256:1c59b5c00b2df59933fe7fb39bc3ed0d31342edeb36247dfbf302af01455fc3d";
     String EUREKA_SHUTDOWN_HOOK_NAME_PREFIX = "ravcube-test-eureka-stop-";
 }
