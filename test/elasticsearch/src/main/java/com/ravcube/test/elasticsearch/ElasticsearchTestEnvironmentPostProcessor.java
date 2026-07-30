@@ -62,6 +62,6 @@ public final class ElasticsearchTestEnvironmentPostProcessor
 
     @Override
     protected Map<String, Object> properties(ElasticsearchContainer container, ConfigurableEnvironment environment) {
-        return Map.of(SPRING_ELASTICSEARCH_URIS_PROPERTY, "http://" + container.getHttpHostAddress());
+        return Map.of(ELASTICSEARCH_URIS_PROPERTY, "http://" + container.getHttpHostAddress());
     }
 }

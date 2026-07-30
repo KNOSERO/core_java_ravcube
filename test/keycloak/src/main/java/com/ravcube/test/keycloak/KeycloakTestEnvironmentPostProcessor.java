@@ -70,6 +70,6 @@ public final class KeycloakTestEnvironmentPostProcessor
                 environment.getProperty(KEYCLOAK_REALM_PROPERTY, DEFAULT_KEYCLOAK_REALM)
         );
 
-        return Map.of(SPRING_ISSUER_URI_PROPERTY, issuerUri);
+        return Map.of(KEYCLOAK_ISSUER_URI_PROPERTY, issuerUri);
     }
 }

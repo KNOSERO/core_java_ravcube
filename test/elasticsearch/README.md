@@ -24,12 +24,12 @@ import static com.ravcube.test.elasticsearch.ElasticsearchTestProfiles.TEST_ELAS
 
 - start wspolnego kontenera Elasticsearch
 - automatyczne ustawienie:
-  - `spring.elasticsearch.uris`
+  - `ravcube.search.uris`
 
 ## Czego nie kopiowac do testu
 
 Nie ustawiaj recznie:
 
-- `spring.elasticsearch.uris`
+- `ravcube.search.uris`
 
 To ma byc utrzymywane w tym module.

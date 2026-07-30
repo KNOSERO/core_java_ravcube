@@ -25,12 +25,12 @@ import static com.ravcube.test.keycloak.KeycloakTestProfiles.TEST_KEYCLOAK_PROFI
 ## Co modul ustawia automatycznie
 
 - start kontenera Keycloak
-- `spring.security.oauth2.resourceserver.jwt.issuer-uri`
+- `ravcube.keycloak.issuer-uri`
 
 ## Czego nie wpisywac recznie w module docelowym
 
 Nie duplikuj w testach:
 
-- `spring.security.oauth2.resourceserver.jwt.issuer-uri`
+- `ravcube.keycloak.issuer-uri`
 - `ravcube.testcontainers.keycloak.image`
 - `ravcube.testcontainers.keycloak.realm`

@@ -24,14 +24,14 @@ import static com.ravcube.test.redis.RedisTestProfiles.TEST_REDIS_PROFILE;
 
 - start wspolnego kontenera Redis
 - automatyczne ustawienie:
-  - `spring.data.redis.host`
-  - `spring.data.redis.port`
+  - `ravcube.redis.host`
+  - `ravcube.redis.port`
 
 ## Czego nie kopiowac do testu
 
 Nie ustawiaj recznie:
 
-- `spring.data.redis.host`
-- `spring.data.redis.port`
+- `ravcube.redis.host`
+- `ravcube.redis.port`
 
 To ma byc utrzymywane w tym module.

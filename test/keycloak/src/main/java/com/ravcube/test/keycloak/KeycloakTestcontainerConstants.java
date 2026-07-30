@@ -7,7 +7,7 @@ interface KeycloakTestcontainerConstants {
     String KEYCLOAK_ENABLED_PROPERTY = "ravcube.testcontainers.keycloak.enabled";
     String KEYCLOAK_IMAGE_PROPERTY = "ravcube.testcontainers.keycloak.image";
     String KEYCLOAK_REALM_PROPERTY = "ravcube.testcontainers.keycloak.realm";
-    String SPRING_ISSUER_URI_PROPERTY = "spring.security.oauth2.resourceserver.jwt.issuer-uri";
+    String KEYCLOAK_ISSUER_URI_PROPERTY = "ravcube.keycloak.issuer-uri";
     int KEYCLOAK_INTERNAL_PORT = 8080;
     String DEFAULT_KEYCLOAK_IMAGE = "quay.io/keycloak/keycloak:26.0.7";
     String DEFAULT_KEYCLOAK_REALM = "master";
