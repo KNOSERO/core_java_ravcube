@@ -1,5 +1,7 @@
 # test:kafka
 
+Wzor tworzenia modulow `test:*` jest opisany w [test/common/README.md](../common/README.md).
+
 Centralna konfiguracja testowa Kafka oparta o Testcontainers.
 Po dodaniu jednej zaleznosci dostajesz automatycznie uruchamiany kontener Kafka
 i ustawione `spring.kafka.bootstrap-servers`.

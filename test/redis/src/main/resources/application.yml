@@ -1,5 +1,5 @@
 ravcube:
   testcontainers:
     redis:
-      enabled: true
+      enabled: false
       image: redis:7.2-alpine

@@ -1,0 +1,4 @@
+ravcube:
+  testcontainers:
+    elasticsearch:
+      enabled: true

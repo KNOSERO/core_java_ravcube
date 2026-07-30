@@ -1,0 +1,21 @@
+ravcube:
+  testcontainers:
+    eureka:
+      enabled: true
+  eureka:
+    app-name: ravcube-test-service
+    client:
+      registry-fetch-interval-seconds: 1
+      instance-info-replication-interval-seconds: 1
+      initial-instance-info-replication-interval-seconds: 1
+    instance:
+      lease-renewal-interval-in-seconds: 1
+      lease-expiration-duration-in-seconds: 5
+
+eureka:
+  instance:
+    non-secure-port: ${server.port}
+    instance-id: ${spring.application.name}:${eureka.instance.non-secure-port}
+    hostname: localhost
+    prefer-ip-address: true
+    ip-address: 127.0.0.1

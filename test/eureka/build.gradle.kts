@@ -8,6 +8,9 @@ repositories {
 
 dependencies {
     api(project(":test:common"))
+    api(platform(libs.spring.cloud.dependencies))
+    api(libs.spring.boot.autoconfigure)
+    api(libs.spring.cloud.starter.loadbalancer)
     runtimeOnly(libs.junit.launcher)
 }
 

@@ -6,6 +6,7 @@ rootProject.name = "core_java_ravcube"
 include("lib:common")
 include("lib:cache:api")
 include("lib:cache:core")
+include("lib:idempotency:core")
 include("lib:search:api")
 include("lib:search:core")
 include("lib:security:api")

@@ -1,11 +1,14 @@
 # test:postgresql
 
+Wzor tworzenia modulow `test:*` jest opisany w [test/common/README.md](../common/README.md).
+
 Centralna konfiguracja testowa PostgreSQL oparta o Testcontainers.
-Po dodaniu jednej zależności dostajesz gotowy `spring.datasource.*` i zestaw podstawowych zależności testowych.
+Po dodaniu jednej zaleznosci dostajesz gotowy profil `test-postgresql`,
+`spring.datasource.*` i zestaw podstawowych zaleznosci testowych.
 
 ## Co daje modul
 
-- Domyslna konfiguracja datasource przez Testcontainers (`jdbc:tc:postgresql:...`)
+- Profil `test-postgresql` z konfiguracja datasource przez Testcontainers (`jdbc:tc:postgresql:...`)
 - Domyslne ustawienia Postgresa (version/database/username/password)
 - `spring.jpa.hibernate.ddl-auto=create-drop`
 - Zaleznosci testowe:
@@ -23,13 +26,20 @@ testImplementation(project(":test:postgresql"))
 ```
 
 Nie trzeba dodawac `spring.config.import`.
-Konfiguracja laduje sie automatycznie z `application.yml` tego modulu.
+W testach aktywuj profil `test-postgresql`, np.:
+
+```java
+import static com.ravcube.test.postgresql.PostgresqlTestProfiles.TEST_POSTGRESQL_PROFILE;
+
+@ActiveProfiles({"test", TEST_POSTGRESQL_PROFILE})
+```
 
 ## Domyslna konfiguracja
 
-Plik konfiguracyjny:
+Pliki konfiguracyjne:
 
 - `application.yml` (w module `:test:postgresql`)
+- `application-test-postgresql.yml` (w module `:test:postgresql`)
 
 Domyslne wartosci:
 
@@ -45,7 +55,7 @@ Wlasciwosci do nadpisania:
 - `ravcube.testcontainers.postgres.username`
 - `ravcube.testcontainers.postgres.password`
 
-Konfigurowany URL datasource:
+Konfigurowany URL datasource w profilu `test-postgresql`:
 
 ```yaml
 spring:

@@ -8,15 +8,8 @@ import org.testcontainers.kafka.ConfluentKafkaContainer;
 import org.testcontainers.utility.DockerImageName;
 
 public final class KafkaTestcontainerEnvironmentPostProcessor
-        extends BaseTestcontainerEnvironmentPostProcessor<ConfluentKafkaContainer> {
-
-    private static final String PROPERTY_SOURCE_NAME = "ravcubeTestKafkaContainer";
-    private static final String KAFKA_PROFILE = "test-kafka";
-    private static final String BOOTSTRAP_SERVERS_PROPERTY = "spring.kafka.bootstrap-servers";
-    private static final String KAFKA_ENABLED_PROPERTY = "ravcube.testcontainers.kafka.enabled";
-    private static final String KAFKA_IMAGE_PROPERTY = "ravcube.testcontainers.kafka.image";
-    private static final String DEFAULT_KAFKA_IMAGE = "confluentinc/cp-kafka:7.7.0";
-    private static final String KAFKA_SHUTDOWN_HOOK_NAME = "ravcube-test-kafka-stop";
+        extends BaseTestcontainerEnvironmentPostProcessor<ConfluentKafkaContainer>
+        implements KafkaTestcontainerConstants {
 
     private static final SharedContainer<ConfluentKafkaContainer> SHARED_KAFKA_CONTAINER = new SharedContainer<>();
 

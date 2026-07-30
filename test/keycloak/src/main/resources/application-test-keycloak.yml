@@ -1,0 +1,4 @@
+ravcube:
+  testcontainers:
+    keycloak:
+      enabled: true
