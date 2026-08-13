@@ -13,6 +13,7 @@ dependencies {
 
     testImplementation(libs.junit.jupiter)
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
+    testImplementation(project(":test:common"))
     testImplementation(project(":test:kafka"))
     testImplementation(libs.spring.test)
     runtimeOnly(libs.junit.launcher)

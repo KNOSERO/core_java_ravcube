@@ -1,15 +1,16 @@
 package com.ravcube.lib.event.test;
 
 import com.ravcube.lib.event.listener.EventInvocationTracker;
-import org.junit.jupiter.api.Test;
-
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.Test;
 
+import static com.ravcube.test.common.time.TestDelays.delayedBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -70,23 +71,14 @@ class EventInvocationTrackerTest {
     void shouldWaitForInvocationsUsingDefaultDelay() throws InterruptedException {
         EventInvocationTracker<TestEvent, UUID> ledger = EventInvocationTracker.of(TestEvent::id);
         UUID id = UUID.randomUUID();
-        Thread registrar = new Thread(() -> {
-            sleep(100L);
-            ledger.register(new TestEvent(id, "delayed"));
-        });
+        Thread registrar = new Thread(delayedBy(
+                Duration.ofMillis(100),
+                () -> ledger.register(new TestEvent(id, "delayed"))
+        ));
 
         registrar.start();
         assertEquals(1, ledger.invocations(id));
         registrar.join();
-    }
-
-    private static void sleep(long millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException ex) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("Interrupted while preparing delayed registration", ex);
-        }
     }
 
     private record TestEvent(UUID id, String message) {

@@ -11,6 +11,7 @@ dependencies {
     testImplementation(project(":lib:cache:core"))
     testImplementation(project(":lib:eureka:core"))
     testImplementation(project(":test:awaitility"))
+    testImplementation(project(":test:common"))
     testImplementation(project(":test:eureka"))
     testImplementation(project(":test:redis"))
     testImplementation(platform(libs.spring.cloud.dependencies))
