@@ -3,10 +3,6 @@ plugins {
     alias(libs.plugins.spring.dependency)
 }
 
-repositories {
-    mavenCentral()
-}
-
 dependencies {
     api(libs.blaze.api)
     api(libs.blaze.impl)
@@ -35,14 +31,4 @@ dependencies {
 
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
-}
-
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
-    }
-}
-
-tasks.named<Test>("test") {
-    useJUnitPlatform()
 }

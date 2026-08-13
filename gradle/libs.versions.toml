@@ -6,6 +6,7 @@ blaze-persistence = "1.6.17"
 commons-math3 = "3.6.1"
 guava = "33.3.1-jre"
 jackson-databind = "2.19.2"
+idempotency4j = "0.1.0"
 
 # Jakarta
 jakarta-annotation = "2.1.1"
@@ -40,6 +41,10 @@ blaze-spring = { module = "com.blazebit:blaze-persistence-integration-entity-vie
 # Shared libraries
 commons-math3 = { module = "org.apache.commons:commons-math3", version.ref = "commons-math3" }
 guava = { module = "com.google.guava:guava", version.ref = "guava" }
+idempotency-core = { module = "io.github.josipmusa:idempotency-core", version.ref = "idempotency4j" }
+idempotency-inmemory = { module = "io.github.josipmusa:idempotency-inmemory", version.ref = "idempotency4j" }
+idempotency-spring-boot-starter = { module = "io.github.josipmusa:idempotency-spring-boot-starter", version.ref = "idempotency4j" }
+idempotency-spring-web = { module = "io.github.josipmusa:idempotency-spring-web", version.ref = "idempotency4j" }
 
 # Jakarta
 jakarta-annotation-api = { module = "jakarta.annotation:jakarta.annotation-api", version.ref = "jakarta-annotation" }
@@ -61,6 +66,7 @@ spring-boot-security = { module = "org.springframework.boot:spring-boot-starter-
 spring-boot-oauth2-resource-server = { module = "org.springframework.boot:spring-boot-starter-oauth2-resource-server", version.ref = "spring-boot" }
 spring-cloud-dependencies = { module = "org.springframework.cloud:spring-cloud-dependencies", version.ref = "spring-cloud" }
 spring-cloud-starter-eureka-client = { module = "org.springframework.cloud:spring-cloud-starter-netflix-eureka-client" }
+spring-cloud-starter-loadbalancer = { module = "org.springframework.cloud:spring-cloud-starter-loadbalancer" }
 spring-cloud-starter-openfeign = { module = "org.springframework.cloud:spring-cloud-starter-openfeign" }
 spring-data-jpa = { module = "org.springframework.boot:spring-boot-starter-data-jpa", version.ref = "spring-boot" }
 spring-data-elasticsearch = { module = "org.springframework.boot:spring-boot-starter-data-elasticsearch", version.ref = "spring-boot" }

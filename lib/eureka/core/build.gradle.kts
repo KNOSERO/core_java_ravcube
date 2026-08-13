@@ -2,10 +2,6 @@ plugins {
     `java-library`
 }
 
-repositories {
-    mavenCentral()
-}
-
 dependencies {
     api(project(":lib:eureka:api"))
     implementation(platform(libs.spring.cloud.dependencies))
@@ -13,16 +9,8 @@ dependencies {
     implementation(libs.jackson.databind)
 
     testImplementation(libs.spring.test)
+    testImplementation(libs.spring.web)
+    testImplementation(libs.spring.cloud.starter.openfeign)
     testImplementation(project(":test:eureka"))
     runtimeOnly(libs.junit.launcher)
-}
-
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
-    }
-}
-
-tasks.named<Test>("test") {
-    useJUnitPlatform()
 }

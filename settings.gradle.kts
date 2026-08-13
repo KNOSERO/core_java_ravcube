@@ -3,6 +3,7 @@ plugins {
 }
 
 rootProject.name = "core_java_ravcube"
+include("lib")
 include("lib:common")
 include("lib:cache:api")
 include("lib:cache:core")

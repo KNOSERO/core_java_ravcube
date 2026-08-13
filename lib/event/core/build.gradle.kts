@@ -3,10 +3,6 @@ plugins {
     `java-library`
 }
 
-repositories {
-    mavenCentral()
-}
-
 dependencies {
     implementation(project(":lib:common"))
     api(project(":lib:event:api"))
@@ -20,14 +16,4 @@ dependencies {
     testImplementation(project(":test:kafka"))
     testImplementation(libs.spring.test)
     runtimeOnly(libs.junit.launcher)
-}
-
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
-    }
-}
-
-tasks.named<Test>("test") {
-    useJUnitPlatform()
 }
