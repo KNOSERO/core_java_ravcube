@@ -71,7 +71,15 @@ record IdempotencyEntry(
     }
 
     boolean canBeAcquired(Instant now) {
-        return status == IdempotencyEntryStatus.FAILED || (lockExpiresAt != null && lockExpiresAt.isBefore(now));
+        return canBeRetried() || hasExpiredLock(now);
+    }
+
+    boolean canBeRetried() {
+        return status == IdempotencyEntryStatus.FAILED;
+    }
+
+    boolean hasExpiredLock(Instant now) {
+        return lockExpiresAt != null && lockExpiresAt.isBefore(now);
     }
 
     boolean hasSameFingerprint(IdempotencyContext context) {

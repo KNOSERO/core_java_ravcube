@@ -20,5 +20,12 @@ interface IdempotencyShotClient {
     );
 
     @PostMapping
+    ResponseEntity<String> slowShot(
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @RequestHeader("X-Test-Slow") boolean slow,
+            @RequestBody Map<String, String> payload
+    );
+
+    @PostMapping
     ResponseEntity<String> shotWithoutIdempotencyKey(@RequestBody Map<String, String> payload);
 }

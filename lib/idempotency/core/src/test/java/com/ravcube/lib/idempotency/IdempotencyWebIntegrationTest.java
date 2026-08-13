@@ -3,10 +3,14 @@ package com.ravcube.lib.idempotency;
 import feign.FeignException;
 import io.github.josipmusa.idempotency.core.IdempotencyStore;
 import java.time.Duration;
-import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.function.Supplier;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,10 +20,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 
 import static com.ravcube.test.eureka.EurekaTestProfiles.TEST_EUREKA_PROFILE;
+import static com.ravcube.test.awaitility.Eventually.untilSucceeds;
+import static com.ravcube.test.awaitility.Eventually.untilThrows;
 import static com.ravcube.test.redis.RedisTestProfiles.TEST_REDIS_PROFILE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @ActiveProfiles({"redis", TEST_REDIS_PROFILE, "eureka", TEST_EUREKA_PROFILE})
 @SpringBootTest(
@@ -53,7 +58,9 @@ class IdempotencyWebIntegrationTest {
         assertInstanceOf(CacheStoreIdempotencyStore.class, idempotencyStore);
         String idempotencyKey = UUID.randomUUID().toString();
 
-        ResponseEntity<String> firstResponse = waitUntilSuccess(
+        ResponseEntity<String> firstResponse = untilSucceeds(
+                WAIT_TIMEOUT,
+                RETRY_DELAY,
                 () -> shotClient.shot(idempotencyKey, Map.of("payload", "test"))
         );
         ResponseEntity<String> replayedResponse = shotClient.shot(idempotencyKey, Map.of("payload", "test"));
@@ -67,7 +74,9 @@ class IdempotencyWebIntegrationTest {
 
     @Test
     void shouldExecuteAgainWhenIdempotencyKeyIsDifferent() {
-        ResponseEntity<String> firstResponse = waitUntilSuccess(
+        ResponseEntity<String> firstResponse = untilSucceeds(
+                WAIT_TIMEOUT,
+                RETRY_DELAY,
                 () -> shotClient.shot(UUID.randomUUID().toString(), Map.of("payload", "test"))
         );
         ResponseEntity<String> secondResponse = shotClient.shot(UUID.randomUUID().toString(), Map.of("payload", "test"));
@@ -79,57 +88,88 @@ class IdempotencyWebIntegrationTest {
 
     @Test
     void shouldRejectIdempotentEndpointWithoutIdempotencyKey() {
-        FeignException exception = waitUntilExpectedFeignException(
+        FeignException exception = untilThrows(
+                WAIT_TIMEOUT,
+                RETRY_DELAY,
+                FeignException.class,
                 () -> shotClient.shotWithoutIdempotencyKey(Map.of("payload", "test")),
-                422
+                feignException -> feignException.status() == 422
         );
 
         assertEquals(422, exception.status());
         assertEquals(0, shotController.invocations());
     }
 
-    private <T> T waitUntilSuccess(Supplier<T> supplier) {
-        Instant deadline = Instant.now().plus(WAIT_TIMEOUT);
-        Throwable lastFailure = null;
+    @Test
+    void shouldRejectSameIdempotencyKeyWithDifferentPayload() {
+        String idempotencyKey = UUID.randomUUID().toString();
 
-        while (Instant.now().isBefore(deadline)) {
-            try {
-                return supplier.get();
-            } catch (Throwable exception) {
-                lastFailure = exception;
-                sleep(RETRY_DELAY);
-            }
-        }
+        ResponseEntity<String> firstResponse = untilSucceeds(
+                WAIT_TIMEOUT,
+                RETRY_DELAY,
+                () -> shotClient.shot(idempotencyKey, Map.of("payload", "first"))
+        );
+        FeignException exception = untilThrows(
+                WAIT_TIMEOUT,
+                RETRY_DELAY,
+                FeignException.class,
+                () -> shotClient.shot(idempotencyKey, Map.of("payload", "second")),
+                feignException -> feignException.status() == 422
+        );
 
-        throw new IllegalStateException("Condition was not met before timeout", lastFailure);
+        assertEquals(HttpStatus.OK, firstResponse.getStatusCode());
+        assertEquals(422, exception.status());
+        assertEquals(1, shotController.invocations());
     }
 
-    private FeignException waitUntilExpectedFeignException(Runnable runnable, int expectedStatus) {
-        Instant deadline = Instant.now().plus(WAIT_TIMEOUT);
-        Throwable lastFailure = null;
+    @Test
+    void shouldExecuteOnlyOnceWhenSameIdempotencyKeyIsSentConcurrently() throws Exception {
+        untilSucceeds(
+                WAIT_TIMEOUT,
+                RETRY_DELAY,
+                () -> shotClient.shot(UUID.randomUUID().toString(), Map.of("payload", "warm-up"))
+        );
+        shotController.reset();
 
-        while (Instant.now().isBefore(deadline)) {
-            try {
-                FeignException exception = assertThrows(FeignException.class, runnable::run);
-                if (exception.status() == expectedStatus) {
-                    return exception;
-                }
-                lastFailure = exception;
-            } catch (Throwable exception) {
-                lastFailure = exception;
-            }
-            sleep(RETRY_DELAY);
-        }
-
-        throw new IllegalStateException("Expected Feign status was not returned before timeout", lastFailure);
-    }
-
-    private void sleep(Duration duration) {
+        String idempotencyKey = UUID.randomUUID().toString();
+        CountDownLatch startLatch = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
         try {
-            Thread.sleep(duration.toMillis());
-        } catch (InterruptedException interruptedException) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("Interrupted while waiting", interruptedException);
+            Callable<ShotResult> shot = () -> {
+                startLatch.await();
+                return callSlowShot(idempotencyKey, Map.of("payload", "test"));
+            };
+            List<Future<ShotResult>> futures = List.of(executor.submit(shot), executor.submit(shot));
+
+            startLatch.countDown();
+
+            List<ShotResult> results = List.of(futures.get(0).get(), futures.get(1).get());
+
+            assertEquals(1, results.stream().filter(ShotResult::isOk).count());
+            assertEquals(1, results.stream().filter(result -> result.hasStatus(503)).count());
+            assertEquals(1, shotController.invocations());
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    private ShotResult callSlowShot(String idempotencyKey, Map<String, String> payload) {
+        try {
+            ResponseEntity<String> response = shotClient.slowShot(idempotencyKey, true, payload);
+            return new ShotResult(response.getStatusCode().value());
+        } catch (FeignException exception) {
+            return new ShotResult(exception.status());
+        }
+    }
+
+    private record ShotResult(int status) {
+
+        boolean isOk() {
+            return hasStatus(200);
+        }
+
+        boolean hasStatus(int expectedStatus) {
+            return status == expectedStatus;
         }
     }
 }

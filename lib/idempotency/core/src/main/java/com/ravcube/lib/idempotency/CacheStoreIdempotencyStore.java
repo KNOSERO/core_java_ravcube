@@ -50,12 +50,13 @@ public class CacheStoreIdempotencyStore implements IdempotencyStore {
                 return completed(existing, idempotencyContext);
             }
 
-            if (existing.canBeAcquired(clock.instant())
+            boolean canBeAcquired = existing.canBeAcquired(clock.instant());
+            if (canBeAcquired
                     && entries.replace(cacheKey, existing, newLock, idempotencyContext.ttl())) {
                 return acquired(cacheKey, newLock);
             }
 
-            if (!existing.canBeAcquired(clock.instant())) {
+            if (!canBeAcquired) {
                 return AcquireResult.lockTimeout(idempotencyContext.key());
             }
         }
@@ -66,15 +67,22 @@ public class CacheStoreIdempotencyStore implements IdempotencyStore {
     @Override
     public void complete(String key, StoredResponse response, Duration ttl) {
         IdempotencyCacheKey cacheKey = cacheKeyFactory.from(key);
-        IdempotencyEntry acquiredEntry = acquiredEntries.required(cacheKey, key);
-        IdempotencyEntry completedEntry = acquiredEntry.complete(
-                Objects.requireNonNull(response, "response must not be null")
-        );
+        StoredResponse storedResponse = Objects.requireNonNull(response, "response must not be null");
+        Duration entryTtl = Objects.requireNonNull(ttl, "ttl must not be null");
 
         try {
-            if (!entries.replace(cacheKey, acquiredEntry, completedEntry, Objects.requireNonNull(ttl, "ttl must not be null"))) {
+            for (int attempt = 0; attempt < MAX_ACQUIRE_ATTEMPTS; attempt++) {
+                IdempotencyEntry acquiredEntry = acquiredEntries.required(cacheKey, key);
+                IdempotencyEntry completedEntry = acquiredEntry.complete(storedResponse);
+                if (entries.replace(cacheKey, acquiredEntry, completedEntry, entryTtl)) {
+                    return;
+                }
+                if (acquiredEntries.find(cacheKey).filter(updatedEntry -> !updatedEntry.equals(acquiredEntry)).isPresent()) {
+                    continue;
+                }
                 throw new IllegalStateException("Idempotency entry is no longer owned by this request for key " + key);
             }
+            throw new IllegalStateException("Could not complete idempotency entry because it kept changing for key " + key);
         } finally {
             acquiredEntries.forget(cacheKey);
         }
@@ -83,29 +91,25 @@ public class CacheStoreIdempotencyStore implements IdempotencyStore {
     @Override
     public void release(String key) {
         IdempotencyCacheKey cacheKey = cacheKeyFactory.from(key);
-        IdempotencyEntry acquiredEntry = acquiredEntries.find(cacheKey).orElse(null);
-
-        if (acquiredEntry != null) {
-            entries.replace(cacheKey, acquiredEntry, acquiredEntry.failed(FAILED_ENTRY_TTL), FAILED_ENTRY_TTL);
+        IdempotencyEntry acquiredEntry = acquiredEntries.required(cacheKey, key);
+        try {
+            releaseAcquired(cacheKey, acquiredEntry);
+        } finally {
             acquiredEntries.forget(cacheKey);
-            return;
         }
-
-        entries.find(cacheKey)
-                .filter(IdempotencyEntry::isInProgress)
-                .ifPresent(existing -> entries.replace(cacheKey, existing, existing.failed(FAILED_ENTRY_TTL), FAILED_ENTRY_TTL));
     }
 
     @Override
     public void extendLock(String key, Duration ttl) {
         IdempotencyCacheKey cacheKey = cacheKeyFactory.from(key);
-        entries.find(cacheKey)
+        acquiredEntries.find(cacheKey)
                 .filter(IdempotencyEntry::isInProgress)
-                .ifPresent(existing -> entries.replace(cacheKey, existing, existing.extendLock(clock.instant(), ttl), existing.ttl()));
+                .ifPresent(acquiredEntry -> extendAcquiredLock(cacheKey, acquiredEntry, ttl));
     }
 
     @Override
     public int purgeExpired() {
+        // CacheStore implementations rely on entry TTLs, so expired records are removed by the backend.
         return 0;
     }
 
@@ -119,5 +123,27 @@ public class CacheStoreIdempotencyStore implements IdempotencyStore {
             return AcquireResult.fingerprintMismatch(entry.requestFingerprint(), context.requestFingerprint());
         }
         return AcquireResult.duplicate(entry.toStoredResponse());
+    }
+
+    private void releaseAcquired(IdempotencyCacheKey cacheKey, IdempotencyEntry acquiredEntry) {
+        IdempotencyEntry currentEntry = acquiredEntry;
+        for (int attempt = 0; attempt < MAX_ACQUIRE_ATTEMPTS; attempt++) {
+            IdempotencyEntry failedEntry = currentEntry.failed(FAILED_ENTRY_TTL);
+            if (entries.replace(cacheKey, currentEntry, failedEntry, FAILED_ENTRY_TTL)) {
+                return;
+            }
+            IdempotencyEntry updatedEntry = acquiredEntries.find(cacheKey).orElse(null);
+            if (updatedEntry == null || updatedEntry.equals(currentEntry)) {
+                return;
+            }
+            currentEntry = updatedEntry;
+        }
+    }
+
+    private void extendAcquiredLock(IdempotencyCacheKey cacheKey, IdempotencyEntry acquiredEntry, Duration ttl) {
+        IdempotencyEntry extendedEntry = acquiredEntry.extendLock(clock.instant(), Objects.requireNonNull(ttl, "ttl must not be null"));
+        if (entries.replace(cacheKey, acquiredEntry, extendedEntry, acquiredEntry.ttl())) {
+            acquiredEntries.replace(cacheKey, acquiredEntry, extendedEntry);
+        }
     }
 }

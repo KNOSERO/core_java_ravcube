@@ -1,19 +1,19 @@
 package com.ravcube.lib.idempotency;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 final class AcquiredIdempotencyEntries {
 
-    private final ThreadLocal<Map<IdempotencyCacheKey, IdempotencyEntry>> entries = ThreadLocal.withInitial(HashMap::new);
+    private final ConcurrentMap<IdempotencyCacheKey, IdempotencyEntry> entries = new ConcurrentHashMap<>();
 
     void remember(IdempotencyCacheKey cacheKey, IdempotencyEntry entry) {
-        entries.get().put(cacheKey, entry);
+        entries.put(cacheKey, entry);
     }
 
     Optional<IdempotencyEntry> find(IdempotencyCacheKey cacheKey) {
-        return Optional.ofNullable(entries.get().get(cacheKey));
+        return Optional.ofNullable(entries.get(cacheKey));
     }
 
     IdempotencyEntry required(IdempotencyCacheKey cacheKey, String key) {
@@ -22,11 +22,11 @@ final class AcquiredIdempotencyEntries {
         );
     }
 
+    boolean replace(IdempotencyCacheKey cacheKey, IdempotencyEntry expectedEntry, IdempotencyEntry newEntry) {
+        return entries.replace(cacheKey, expectedEntry, newEntry);
+    }
+
     void forget(IdempotencyCacheKey cacheKey) {
-        Map<IdempotencyCacheKey, IdempotencyEntry> currentEntries = entries.get();
-        currentEntries.remove(cacheKey);
-        if (currentEntries.isEmpty()) {
-            entries.remove();
-        }
+        entries.remove(cacheKey);
     }
 }
