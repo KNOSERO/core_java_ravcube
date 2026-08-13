@@ -1,0 +1,2 @@
+com.ravcube.lib.idempotency.config.CacheStoreIdempotencyAutoConfiguration
+com.ravcube.lib.idempotency.config.InMemoryIdempotencyAutoConfiguration
