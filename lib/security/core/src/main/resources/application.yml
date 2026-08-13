@@ -1,0 +1,13 @@
+ravcube:
+  keycloak:
+    issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/master}
+
+spring:
+  config:
+    activate:
+      on-profile: keycloak
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${ravcube.keycloak.issuer-uri}
