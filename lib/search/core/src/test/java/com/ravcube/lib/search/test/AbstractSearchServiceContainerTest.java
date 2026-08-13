@@ -18,6 +18,7 @@ import java.util.UUID;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 
+import static com.ravcube.test.awaitility.Eventually.until;
 import static com.ravcube.test.elasticsearch.ElasticsearchTestProfiles.TEST_ELASTICSEARCH_PROFILE;
 
 @ActiveProfiles({"elasticsearch", TEST_ELASTICSEARCH_PROFILE})
@@ -31,7 +32,7 @@ abstract class AbstractSearchServiceContainerTest {
     protected SearchTestRepository repository;
 
     @BeforeEach
-    void clearIndex() throws InterruptedException {
+    void clearIndex() {
         repository.deleteAll();
         waitUntil(() -> repository.count() == 0, Duration.ofSeconds(5));
     }
@@ -65,18 +66,11 @@ abstract class AbstractSearchServiceContainerTest {
         return new SearchTestRelationDetail(key, value);
     }
 
-    protected void waitUntilCount(Function<SearchQuery, SearchPredicate> params, long expectedCount, Duration timeout)
-            throws InterruptedException {
+    protected void waitUntilCount(Function<SearchQuery, SearchPredicate> params, long expectedCount, Duration timeout) {
         waitUntil(() -> service.count(params) == expectedCount, timeout);
     }
 
-    protected void waitUntil(BooleanSupplier condition, Duration timeout) throws InterruptedException {
-        long deadline = System.currentTimeMillis() + timeout.toMillis();
-        while (System.currentTimeMillis() < deadline) {
-            if (condition.getAsBoolean()) {
-                return;
-            }
-            Thread.sleep(100);
-        }
+    protected void waitUntil(BooleanSupplier condition, Duration timeout) {
+        until(timeout, Duration.ofMillis(100), condition);
     }
 }
