@@ -1,5 +1,6 @@
 package com.ravcube.lib.idempotency;
 
+import feign.FeignException;
 import io.github.josipmusa.idempotency.core.IdempotencyStore;
 import java.time.Duration;
 import java.util.List;
@@ -18,8 +19,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 
-import static com.ravcube.lib.eureka.RavcubeEurekaClientExceptions.hasStatus;
-import static com.ravcube.lib.eureka.RavcubeEurekaClientExceptions.status;
 import static com.ravcube.test.eureka.EurekaTestProfiles.TEST_EUREKA_PROFILE;
 import static com.ravcube.test.awaitility.Eventually.untilSucceeds;
 import static com.ravcube.test.awaitility.Eventually.untilThrows;
@@ -89,15 +88,15 @@ class IdempotencyWebIntegrationTest {
 
     @Test
     void shouldRejectIdempotentEndpointWithoutIdempotencyKey() {
-        RuntimeException exception = untilThrows(
+        FeignException exception = untilThrows(
                 WAIT_TIMEOUT,
                 RETRY_DELAY,
-                RuntimeException.class,
+                FeignException.class,
                 () -> shotClient.shotWithoutIdempotencyKey(Map.of("payload", "test")),
-                clientException -> hasStatus(clientException, 422)
+                feignException -> feignException.status() == 422
         );
 
-        assertEquals(422, status(exception).orElseThrow());
+        assertEquals(422, exception.status());
         assertEquals(0, shotController.invocations());
     }
 
@@ -110,16 +109,16 @@ class IdempotencyWebIntegrationTest {
                 RETRY_DELAY,
                 () -> shotClient.shot(idempotencyKey, Map.of("payload", "first"))
         );
-        RuntimeException exception = untilThrows(
+        FeignException exception = untilThrows(
                 WAIT_TIMEOUT,
                 RETRY_DELAY,
-                RuntimeException.class,
+                FeignException.class,
                 () -> shotClient.shot(idempotencyKey, Map.of("payload", "second")),
-                clientException -> hasStatus(clientException, 422)
+                feignException -> feignException.status() == 422
         );
 
         assertEquals(HttpStatus.OK, firstResponse.getStatusCode());
-        assertEquals(422, status(exception).orElseThrow());
+        assertEquals(422, exception.status());
         assertEquals(1, shotController.invocations());
     }
 
@@ -158,8 +157,8 @@ class IdempotencyWebIntegrationTest {
         try {
             ResponseEntity<String> response = shotClient.slowShot(idempotencyKey, true, payload);
             return new ShotResult(response.getStatusCode().value());
-        } catch (RuntimeException exception) {
-            return new ShotResult(status(exception).orElseThrow());
+        } catch (FeignException exception) {
+            return new ShotResult(exception.status());
         }
     }
 
