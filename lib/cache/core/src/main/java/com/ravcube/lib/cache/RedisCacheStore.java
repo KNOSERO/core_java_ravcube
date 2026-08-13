@@ -1,8 +1,10 @@
 package com.ravcube.lib.cache;
 
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.SessionCallback;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -41,6 +43,39 @@ public class RedisCacheStore implements CacheStore {
         final T cacheValue = Objects.requireNonNull(value, "value must not be null");
         final Duration entryTtl = Objects.requireNonNull(ttl, "ttl must not be null");
         redisTemplate.opsForValue().set(cacheKey, cacheValue, entryTtl);
+    }
+
+    @Override
+    public <T> boolean putIfAbsent(String key, T value, Duration ttl) {
+        final String cacheKey = Objects.requireNonNull(key, "key must not be null");
+        final T cacheValue = Objects.requireNonNull(value, "value must not be null");
+        final Duration entryTtl = Objects.requireNonNull(ttl, "ttl must not be null");
+        return Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(cacheKey, cacheValue, entryTtl));
+    }
+
+    @Override
+    public <T> boolean replace(String key, T expectedValue, T newValue, Duration ttl) {
+        final String cacheKey = Objects.requireNonNull(key, "key must not be null");
+        final T expectedCacheValue = Objects.requireNonNull(expectedValue, "expectedValue must not be null");
+        final T cacheValue = Objects.requireNonNull(newValue, "newValue must not be null");
+        final Duration entryTtl = Objects.requireNonNull(ttl, "ttl must not be null");
+
+        return Boolean.TRUE.equals(redisTemplate.execute(new SessionCallback<Boolean>() {
+            @Override
+            public Boolean execute(org.springframework.data.redis.core.RedisOperations operations) {
+                operations.watch(cacheKey);
+                Object currentValue = operations.opsForValue().get(cacheKey);
+                if (!expectedCacheValue.equals(currentValue)) {
+                    operations.unwatch();
+                    return false;
+                }
+
+                operations.multi();
+                operations.opsForValue().set(cacheKey, cacheValue, entryTtl);
+                List<Object> results = operations.exec();
+                return results != null;
+            }
+        }));
     }
 
     @Override

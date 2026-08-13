@@ -11,8 +11,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static com.ravcube.test.redis.RedisTestProfiles.TEST_REDIS_PROFILE;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static java.lang.Thread.sleep;
+import static org.junit.jupiter.api.Assertions.*;
 
 @ActiveProfiles({"redis", TEST_REDIS_PROFILE})
 @SpringBootTest(classes = TestApplication.class)
@@ -62,13 +62,44 @@ class RedisCacheStoreTest {
         assertTrue(cacheStore.get(key, String.class).isEmpty());
     }
 
+    @Test
+    void shouldPutValueOnlyWhenKeyIsAbsent() {
+        // given
+        String key = "cache:test:" + UUID.randomUUID();
+
+        // when
+        boolean firstPut = cacheStore.putIfAbsent(key, "first", Duration.ofMinutes(1));
+        boolean secondPut = cacheStore.putIfAbsent(key, "second", Duration.ofMinutes(1));
+
+        // then
+        assertTrue(firstPut);
+        assertFalse(secondPut);
+        assertEquals("first", cacheStore.get(key, String.class).orElseThrow());
+    }
+
+    @Test
+    void shouldReplaceValueOnlyWhenExpectedValueMatches() {
+        // given
+        String key = "cache:test:" + UUID.randomUUID();
+        cacheStore.put(key, "first", Duration.ofMinutes(1));
+
+        // when
+        boolean rejected = cacheStore.replace(key, "other", "rejected", Duration.ofMinutes(1));
+        boolean replaced = cacheStore.replace(key, "first", "second", Duration.ofMinutes(1));
+
+        // then
+        assertFalse(rejected);
+        assertTrue(replaced);
+        assertEquals("second", cacheStore.get(key, String.class).orElseThrow());
+    }
+
     private void waitUntilMissing(String key, Duration timeout) throws InterruptedException {
         long deadline = System.currentTimeMillis() + timeout.toMillis();
         while (System.currentTimeMillis() < deadline) {
             if (cacheStore.get(key, String.class).isEmpty()) {
                 return;
             }
-            Thread.sleep(50);
+            sleep(50);
         }
     }
 

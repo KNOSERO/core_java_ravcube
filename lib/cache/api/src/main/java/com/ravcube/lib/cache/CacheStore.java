@@ -11,5 +11,9 @@ public interface CacheStore {
 
     <T> void put(String key, T value, Duration ttl);
 
+    <T> boolean putIfAbsent(String key, T value, Duration ttl);
+
+    <T> boolean replace(String key, T expectedValue, T newValue, Duration ttl);
+
     void delete(String key);
 }
