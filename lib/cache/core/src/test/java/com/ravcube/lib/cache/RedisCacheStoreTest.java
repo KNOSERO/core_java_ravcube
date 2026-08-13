@@ -10,8 +10,8 @@ import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
 
+import static com.ravcube.test.awaitility.Eventually.untilAsserted;
 import static com.ravcube.test.redis.RedisTestProfiles.TEST_REDIS_PROFILE;
-import static java.lang.Thread.sleep;
 import static org.junit.jupiter.api.Assertions.*;
 
 @ActiveProfiles({"redis", TEST_REDIS_PROFILE})
@@ -37,16 +37,17 @@ class RedisCacheStoreTest {
     }
 
     @Test
-    void shouldExpireValueAfterTtl() throws InterruptedException {
+    void shouldExpireValueAfterTtl() {
         // given
         String key = "cache:test:" + UUID.randomUUID();
         cacheStore.put(key, "short-lived", Duration.ofMillis(300));
 
         // when
-        waitUntilMissing(key, Duration.ofSeconds(3));
-
-        // then
-        assertTrue(cacheStore.get(key, String.class).isEmpty());
+        untilAsserted(
+                Duration.ofSeconds(3),
+                Duration.ofMillis(50),
+                () -> assertTrue(cacheStore.get(key, String.class).isEmpty())
+        );
     }
 
     @Test
@@ -91,16 +92,6 @@ class RedisCacheStoreTest {
         assertFalse(rejected);
         assertTrue(replaced);
         assertEquals("second", cacheStore.get(key, String.class).orElseThrow());
-    }
-
-    private void waitUntilMissing(String key, Duration timeout) throws InterruptedException {
-        long deadline = System.currentTimeMillis() + timeout.toMillis();
-        while (System.currentTimeMillis() < deadline) {
-            if (cacheStore.get(key, String.class).isEmpty()) {
-                return;
-            }
-            sleep(50);
-        }
     }
 
     private record SamplePayload(String name, int version) implements Serializable {
