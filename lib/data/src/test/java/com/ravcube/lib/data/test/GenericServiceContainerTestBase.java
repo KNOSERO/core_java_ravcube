@@ -12,7 +12,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
-@ActiveProfiles("test")
+import static com.ravcube.test.postgresql.PostgresqlTestProfiles.TEST_POSTGRESQL_PROFILE;
+
+@ActiveProfiles({"postgresql", TEST_POSTGRESQL_PROFILE})
 @SpringBootTest(classes = TestApplication.class)
 abstract class GenericServiceContainerTestBase {
 
