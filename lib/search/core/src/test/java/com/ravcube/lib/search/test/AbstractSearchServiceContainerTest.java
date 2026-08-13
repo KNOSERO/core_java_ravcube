@@ -18,7 +18,9 @@ import java.util.UUID;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 
-@ActiveProfiles({"elasticsearch", "test-elasticsearch"})
+import static com.ravcube.test.elasticsearch.ElasticsearchTestProfiles.TEST_ELASTICSEARCH_PROFILE;
+
+@ActiveProfiles({"elasticsearch", TEST_ELASTICSEARCH_PROFILE})
 @SpringBootTest(classes = TestApplication.class)
 abstract class AbstractSearchServiceContainerTest {
 

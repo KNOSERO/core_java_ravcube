@@ -1,10 +1,18 @@
-spring:
-  config:
-    activate:
-      on-profile: elasticsearch
-  elasticsearch:
+ravcube:
+  search:
     uris: ${RAVCUBE_SEARCH_URIS:http://localhost:9200}
     username: ${RAVCUBE_SEARCH_USERNAME:}
     password: ${RAVCUBE_SEARCH_PASSWORD:}
     connection-timeout: ${RAVCUBE_SEARCH_CONNECTION_TIMEOUT:1s}
     socket-timeout: ${RAVCUBE_SEARCH_SOCKET_TIMEOUT:30s}
+
+spring:
+  config:
+    activate:
+      on-profile: elasticsearch
+  elasticsearch:
+    uris: ${ravcube.search.uris}
+    username: ${ravcube.search.username}
+    password: ${ravcube.search.password}
+    connection-timeout: ${ravcube.search.connection-timeout}
+    socket-timeout: ${ravcube.search.socket-timeout}
