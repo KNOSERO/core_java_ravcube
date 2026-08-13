@@ -5,8 +5,6 @@ import com.ravcube.lib.eureka.config.EurekaCoreTestApplication;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.time.Duration;
-import java.time.Instant;
-import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -14,6 +12,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
+import static com.ravcube.test.awaitility.Eventually.untilSucceeds;
 import static com.ravcube.test.eureka.EurekaTestProfiles.TEST_EUREKA_PROFILE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -42,33 +41,8 @@ class EurekaRegistrationContainerTest {
 
     @Test
     void shouldCallServiceThroughEurekaUsingTestClient() {
-        String response = waitUntilSuccess(testClient::ping);
+        String response = untilSucceeds(WAIT_TIMEOUT, RETRY_DELAY, testClient::ping);
         assertEquals("pong", response);
-    }
-
-    private String waitUntilSuccess(Supplier<String> supplier) {
-        Instant deadline = Instant.now().plus(WAIT_TIMEOUT);
-        Throwable lastFailure = null;
-
-        while (Instant.now().isBefore(deadline)) {
-            try {
-                return supplier.get();
-            } catch (Throwable exception) {
-                lastFailure = exception;
-                sleep(RETRY_DELAY);
-            }
-        }
-
-        throw new IllegalStateException("Condition was not met before timeout", lastFailure);
-    }
-
-    private void sleep(Duration duration) {
-        try {
-            Thread.sleep(duration.toMillis());
-        } catch (InterruptedException interruptedException) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("Interrupted while waiting", interruptedException);
-        }
     }
 
     private static int randomAvailablePort() {

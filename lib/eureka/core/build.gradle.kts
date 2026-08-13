@@ -11,6 +11,7 @@ dependencies {
     testImplementation(libs.spring.test)
     testImplementation(libs.spring.web)
     testImplementation(libs.spring.cloud.starter.openfeign)
+    testImplementation(project(":test:awaitility"))
     testImplementation(project(":test:eureka"))
     runtimeOnly(libs.junit.launcher)
 }
