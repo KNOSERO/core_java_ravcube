@@ -16,7 +16,6 @@ dependencies {
     testImplementation(platform(libs.spring.cloud.dependencies))
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.spring.cloud.starter.loadbalancer)
-    testImplementation(libs.spring.cloud.starter.openfeign)
     testImplementation(libs.spring.test)
     runtimeOnly(libs.junit.launcher)
 }
