@@ -16,9 +16,10 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.UUID;
 
+import static com.ravcube.test.kafka.KafkaTestProfiles.TEST_KAFKA_PROFILE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@ActiveProfiles({"kafka", "test-kafka"})
+@ActiveProfiles({"kafka", TEST_KAFKA_PROFILE})
 @SpringBootTest(
         classes = TestApplication.class,
         properties = {
