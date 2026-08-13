@@ -1,6 +1,5 @@
-package com.ravcube.lib.idempotency.web;
+package com.ravcube.lib.idempotency;
 
-import com.ravcube.lib.idempotency.CacheStoreIdempotencyStore;
 import feign.FeignException;
 import io.github.josipmusa.idempotency.core.IdempotencyStore;
 import java.time.Duration;

@@ -1,4 +1,4 @@
-package com.ravcube.lib.idempotency.web;
+package com.ravcube.lib.idempotency;
 
 import com.ravcube.lib.cache.config.RedisConfigCache;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

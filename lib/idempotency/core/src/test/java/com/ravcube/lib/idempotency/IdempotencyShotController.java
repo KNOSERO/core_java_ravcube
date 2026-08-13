@@ -1,4 +1,4 @@
-package com.ravcube.lib.idempotency.web;
+package com.ravcube.lib.idempotency;
 
 import io.github.josipmusa.idempotency.spring.web.Idempotent;
 import java.util.Map;

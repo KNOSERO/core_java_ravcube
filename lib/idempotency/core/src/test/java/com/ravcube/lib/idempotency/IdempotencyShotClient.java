@@ -1,4 +1,4 @@
-package com.ravcube.lib.idempotency.web;
+package com.ravcube.lib.idempotency;
 
 import java.util.Map;
 import org.springframework.cloud.openfeign.FeignClient;
