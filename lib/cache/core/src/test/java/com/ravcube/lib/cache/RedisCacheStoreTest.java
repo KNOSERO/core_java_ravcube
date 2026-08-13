@@ -10,10 +10,11 @@ import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
 
+import static com.ravcube.test.redis.RedisTestProfiles.TEST_REDIS_PROFILE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@ActiveProfiles({"redis", "test-redis"})
+@ActiveProfiles({"redis", TEST_REDIS_PROFILE})
 @SpringBootTest(classes = TestApplication.class)
 class RedisCacheStoreTest {
 
