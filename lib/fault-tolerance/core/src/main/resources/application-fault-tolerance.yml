@@ -1,0 +1,17 @@
+spring:
+  cloud:
+    openfeign:
+      circuitbreaker:
+        enabled: ${ravcube.fault-tolerance.openfeign.circuitbreaker.enabled:true}
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-type: ${ravcube.fault-tolerance.circuitbreaker.sliding-window-type:COUNT_BASED}
+        sliding-window-size: ${ravcube.fault-tolerance.circuitbreaker.sliding-window-size:10}
+        minimum-number-of-calls: ${ravcube.fault-tolerance.circuitbreaker.minimum-number-of-calls:5}
+        failure-rate-threshold: ${ravcube.fault-tolerance.circuitbreaker.failure-rate-threshold:50}
+        wait-duration-in-open-state: ${ravcube.fault-tolerance.circuitbreaker.wait-duration-in-open-state:10s}
+        permitted-number-of-calls-in-half-open-state: ${ravcube.fault-tolerance.circuitbreaker.permitted-number-of-calls-in-half-open-state:3}
+        automatic-transition-from-open-to-half-open-enabled: ${ravcube.fault-tolerance.circuitbreaker.automatic-transition-from-open-to-half-open-enabled:true}
