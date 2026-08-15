@@ -3,7 +3,7 @@ package com.ravcube.lib.security;
 import java.util.List;
 import java.util.Map;
 
-public class SecurityContext {
+public final class SecurityContext {
 
     private static final ThreadLocal<List<String>> ROLES = ThreadLocal.withInitial(List::of);
     private static final ThreadLocal<Map<String, Object>> CLAIMS = ThreadLocal.withInitial(Map::of);
