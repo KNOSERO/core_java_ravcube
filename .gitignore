@@ -3,6 +3,11 @@
 .kotlin
 .gradle-codex
 .gradle-codex-project
+.venv-docs
 
 build
 **/build
+site
+docs-site/build
+docs-site/.docusaurus
+docs-site/static/javadoc/*

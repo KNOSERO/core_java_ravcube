@@ -1,0 +1,13 @@
+.git
+.gradle
+.kotlin
+.gradle-codex
+.gradle-codex-project
+.venv-docs
+.idea
+build
+**/build
+site
+docs-site/build
+docs-site/.docusaurus
+docs-site/node_modules
