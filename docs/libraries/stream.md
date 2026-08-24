@@ -1,58 +1,50 @@
 # Stream
 
-Modules:
+The Stream modules provide a small Spring MVC implementation for server-sent
+events (SSE). They let an application expose live refreshes of one resource,
+a whole collection, or a selected set of resource ids.
 
-```text
+## Modules
+
+\`\`\`text
 lib:stream:api
 lib:stream:core
-```
+\`\`\`
 
-The stream library exposes server-sent events for client-facing refreshes.
+\`lib:stream:api\` contains the framework-independent contracts used by the
+application. \`lib:stream:core\` contains the in-memory SSE registry, Spring MVC
+endpoints, and the default publisher.
 
-`lib:stream:api` owns stream abstractions and refresh events. `lib:stream:core`
-owns the Spring MVC SSE endpoints and refresh handling.
+## Dependency
 
-## Stream shapes
+Add the implementation module to a Spring application:
 
-| Shape | Example |
-| --- | --- |
-| Resource | One claim by id. |
-| Collection | All claims. |
-| Selected collection | Claims `1,2,3`. |
+\`\`\`kotlin
+dependencies {
+    implementation(project(":lib:stream:core"))
+}
+\`\`\`
 
-## Basic resource stream
+The core module exposes the API module transitively.
 
-```java
+## Public API
+
+All resource ids are represented as strings at the HTTP boundary. A service can
+implement the matching interface and use the injected \`ClientStreamPublisher\`:
+
+\`\`\`java
 @Component
-class PolicyClaimStream extends ClientResourceStream<String, PolicyClaimDto> {
+final class PolicyClaimStream implements ClientRestResourceStream<PolicyClaimDto> {
+
+    private final ClientStreamPublisher publisher;
 
     PolicyClaimStream(ClientStreamPublisher publisher) {
-        super(publisher);
+        this.publisher = publisher;
     }
 
     @Override
-    protected String resourceName() {
-        return "policies.claims";
-    }
-}
-```
-
-Publish refresh:
-
-```java
-policyClaimStream.refresh(claimId, payload);
-```
-
-## REST-refreshable stream
-
-Use `ClientRestResourceStream` when the stream can rebuild payload from an id.
-
-```java
-@Component
-class PolicyClaimRestStream extends ClientRestResourceStream<String, PolicyClaimDto> {
-
-    PolicyClaimRestStream(ClientStreamPublisher publisher) {
-        super(publisher);
+    public ClientStreamPublisher publisher() {
+        return publisher;
     }
 
     @Override
@@ -61,65 +53,84 @@ class PolicyClaimRestStream extends ClientRestResourceStream<String, PolicyClaim
     }
 
     @Override
-    protected PolicyClaimDto payload(String id) {
-        return claimQuery.load(id);
+    public PolicyClaimDto resource(String resourceId) {
+        return claimQuery.load(resourceId);
     }
 }
-```
+\`\`\`
 
-Refresh endpoint:
+\`ClientRestResourceStream<T>\` combines the resource subscription contract with
+the update handler. Calling \`update(id)\` loads the current resource through
+\`resource(id)\` and publishes it to the stream.
 
-```http
-POST /streams/updates/policies.claims/{claimId}
-```
+For a manual publication, use:
+
+\`\`\`java
+policyClaimStream.refresh(claimId, payload);
+\`\`\`
+
+For collection-shaped payloads use \`ClientCollectionStream<T>\`, and for a
+selected set of ids use \`ClientSelectedCollectionStream<T>\`:
+
+\`\`\`java
+collectionStream.refresh(claims);
+selectedStream.refresh(List.of("claim-1", "claim-2"), claims);
+\`\`\`
 
 ## HTTP endpoints
 
-The base path is configurable with:
+The default base path is \`/streams\`. Override it with
+\`ravcube.stream.path\`. The emitter timeout defaults to \`PT30M\` and can be
+changed with \`ravcube.stream.timeout\`.
 
-| Property | Default |
-| --- | --- |
-| `ravcube.stream.path` | `/streams` |
-| `ravcube.stream.timeout` | `PT30M` |
+| Method | Endpoint | Behavior |
+| --- | --- | --- |
+| \`GET\` | \`/streams/{resourceName}/{resourceId}\` | subscribes to one resource; sends an initial \`refresh\` event when a matching \`ClientRestResourceStream\` exists |
+| \`GET\` | \`/streams/{resourceName}\` | subscribes to updates for the whole collection |
+| \`GET\` | \`/streams/{resourceName}?ids=1&ids=2\` | subscribes to updates matching exactly the selected ids |
+| \`POST\` | \`/streams/updates/{resourceName}/{resourceId}\` | loads the resource through the matching handler and publishes its current value |
 
-Subscription endpoints:
+The update endpoint returns \`204 No Content\`. It returns \`404 Not Found\` when
+the handler or resource does not exist.
 
-```http
-GET /streams/{resourceName}
-GET /streams/{resourceName}?ids=1&ids=2
-GET /streams/{resourceName}/{resourceId}
-```
+A resource update is sent as a \`refresh\` SSE event to:
 
-Manual refresh endpoints:
+- the subscriber of that exact resource;
+- all subscribers of the resource collection;
+- selected-collection subscribers that contain the updated id.
 
-```http
-POST /streams/updates/{resourceName}
-POST /streams/updates/{resourceName}?ids=1&ids=2
-POST /streams/updates/{resourceName}/{resourceId}
-```
+The payload is serialized by Spring MVC using the application's normal message
+converters. Apply the application's regular authentication and authorization
+rules to these endpoints.
 
-Initial snapshots are sent as `refresh` events when a matching REST-refreshable
-handler exists.
+## SSE event format
+
+Every refresh is sent with the SSE event name \`refresh\`:
+
+\`\`\`text
+event: refresh
+data: <serialized payload>
+\`\`\`
+
+The registry is process-local and in-memory. It is intended for a single
+application instance. For multiple instances, publish the same refresh to every
+instance through an external event mechanism before calling the local publisher.
 
 ## Naming
 
-`ClientStreamNames` creates stable stream names:
+\`ClientStreamNames\` provides stable names for resource shapes:
 
 | Shape | Name |
 | --- | --- |
-| Collection | `<resourceName>` |
-| Resource | `<resourceName>.<resourceId>` |
-| Selected collection | `<resourceName>.<id1>,<id2>` |
+| Collection | \`<resourceName>\` |
+| Resource | \`<resourceName>.<resourceId>\` |
+| Selected collection | \`<resourceName>.<sorted-id-1>,<sorted-id-2>\` |
 
-## Event-backed refresh
+The helper removes duplicate selected ids and sorts them, so equivalent id
+selections produce the same name.
 
-`ClientEventResourceStream`, `ClientEventCollectionStream`, and
-`ClientEventSelectedCollectionStream` publish typed refresh-requested events
-instead of refreshing locally. When a `KafkaTemplate` bean exists, stream core
-registers Kafka publishers for those events. The listeners consume
-`KAFKA_AFTER_COMMIT` events and call the local update handlers.
+## Related modules
 
-## Design warning
-
-Tests should talk about client behavior: "listening client receives refresh".
-Hide HTTP and SSE plumbing in test support helpers.
+- \`lib:event:api\` and \`lib:event:core\` can be used to distribute refresh requests
+  between application instances.
+- \`lib:common\` contains shared infrastructure used by other library modules.
