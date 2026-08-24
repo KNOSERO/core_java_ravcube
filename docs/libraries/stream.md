@@ -87,7 +87,7 @@ when no matching handler exists or the handler returns `null`.
 
 Every update is sent as one `refresh` SSE event to subscriptions that contain
 the updated id. A subscription for ids `1,2` therefore receives the update for
-`1), but not the update for `3`.
+`1`, but not the update for `3`.
 
 ## SSE event format
 
