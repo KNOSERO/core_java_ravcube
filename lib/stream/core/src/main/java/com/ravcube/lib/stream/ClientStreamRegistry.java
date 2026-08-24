@@ -11,6 +11,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.LongFunction;
 import java.util.function.Predicate;
 
 @Component
@@ -19,50 +20,34 @@ public final class ClientStreamRegistry {
     public static final String REFRESH_EVENT = "refresh";
 
     private final Duration timeout;
+    private final LongFunction<SseEmitter> emitterFactory;
     private final CopyOnWriteArrayList<Subscription> subscriptions = new CopyOnWriteArrayList<>();
 
     public ClientStreamRegistry(ClientStreamProperties properties) {
-        this.timeout = Objects.requireNonNull(properties, "properties must not be null").timeout();
+        this(properties, timeout -> new SseEmitter(timeout));
     }
 
-    public SseEmitter subscribeResource(String resourceName, String resourceId) {
-        return register(Subscription.resource(resourceName, resourceId));
-    }
-
-    public SseEmitter subscribeCollection(String resourceName) {
-        return register(Subscription.collection(resourceName));
-    }
-
-    public SseEmitter subscribeSelectedCollection(String resourceName, Collection<String> resourceIds) {
-        return register(Subscription.selectedCollection(resourceName, resourceIds));
-    }
-
-    public void publishResource(String resourceName, String resourceId, Object payload) {
-        final String validatedResourceName = ClientStreamNames.collection(resourceName);
-        final String validatedResourceId = requireText(resourceId, "resourceId");
-        publish(
-                subscription -> subscription.acceptsResource(validatedResourceName, validatedResourceId),
-                payload
-        );
-    }
-
-    public void publishCollection(String resourceName, Object payload) {
-        final String validatedResourceName = ClientStreamNames.collection(resourceName);
-        publish(
-                subscription -> subscription.acceptsCollection(validatedResourceName),
-                payload
-        );
-    }
-
-    public void publishSelectedCollection(
-            String resourceName,
-            Collection<String> resourceIds,
-            Object payload
+    ClientStreamRegistry(
+            ClientStreamProperties properties,
+            LongFunction<SseEmitter> emitterFactory
     ) {
-        final String validatedResourceName = ClientStreamNames.collection(resourceName);
-        final Set<String> validatedResourceIds = normalizeIds(resourceIds);
+        this.timeout = Objects.requireNonNull(properties, "properties must not be null").timeout();
+        this.emitterFactory = Objects.requireNonNull(
+                emitterFactory,
+                "emitterFactory must not be null"
+        );
+    }
+
+    public SseEmitter subscribe(String resourceName, Collection<String> resourceIds) {
+        return register(Subscription.create(resourceName, resourceIds));
+    }
+
+    public void publish(String resourceName, String resourceId, Object payload) {
+        final String validatedResourceName = requireText(resourceName, "resourceName");
+        final String validatedResourceId = requireText(resourceId, "resourceId");
+
         publish(
-                subscription -> subscription.acceptsSelectedCollection(validatedResourceName, validatedResourceIds),
+                subscription -> subscription.accepts(validatedResourceName, validatedResourceId),
                 payload
         );
     }
@@ -72,7 +57,10 @@ public final class ClientStreamRegistry {
     }
 
     private SseEmitter register(Subscription subscription) {
-        final SseEmitter emitter = new SseEmitter(timeout.toMillis());
+        final SseEmitter emitter = Objects.requireNonNull(
+                emitterFactory.apply(timeout.toMillis()),
+                "emitterFactory returned null"
+        );
         final Subscription registered = subscription.withEmitter(emitter);
         subscriptions.add(registered);
 
@@ -114,13 +102,16 @@ public final class ClientStreamRegistry {
 
     private static Set<String> normalizeIds(Collection<String> resourceIds) {
         Objects.requireNonNull(resourceIds, "resourceIds must not be null");
+
         final TreeSet<String> normalizedIds = new TreeSet<>();
         for (String resourceId : resourceIds) {
             normalizedIds.add(requireText(resourceId, "resourceId"));
         }
+
         if (normalizedIds.isEmpty()) {
             throw new IllegalArgumentException("resourceIds must not be empty");
         }
+
         return Collections.unmodifiableSet(normalizedIds);
     }
 
@@ -132,69 +123,26 @@ public final class ClientStreamRegistry {
         return value;
     }
 
-    private enum SubscriptionType {
-        RESOURCE,
-        COLLECTION,
-        SELECTED_COLLECTION
-    }
-
     private record Subscription(
             String resourceName,
-            SubscriptionType type,
-            String resourceId,
             Set<String> resourceIds,
             SseEmitter emitter
     ) {
 
-        static Subscription resource(String resourceName, String resourceId) {
+        static Subscription create(String resourceName, Collection<String> resourceIds) {
             return new Subscription(
-                    ClientStreamNames.collection(resourceName),
-                    SubscriptionType.RESOURCE,
-                    requireText(resourceId, "resourceId"),
-                    Set.of(),
-                    null
-            );
-        }
-
-        static Subscription collection(String resourceName) {
-            return new Subscription(
-                    ClientStreamNames.collection(resourceName),
-                    SubscriptionType.COLLECTION,
-                    null,
-                    Set.of(),
-                    null
-            );
-        }
-
-        static Subscription selectedCollection(String resourceName, Collection<String> resourceIds) {
-            return new Subscription(
-                    ClientStreamNames.collection(resourceName),
-                    SubscriptionType.SELECTED_COLLECTION,
-                    null,
+                    requireText(resourceName, "resourceName"),
                     normalizeIds(resourceIds),
                     null
             );
         }
 
         Subscription withEmitter(SseEmitter registeredEmitter) {
-            return new Subscription(resourceName, type, resourceId, resourceIds, registeredEmitter);
+            return new Subscription(resourceName, resourceIds, registeredEmitter);
         }
 
-        boolean acceptsResource(String name, String id) {
-            return resourceName.equals(name)
-                    && (type == SubscriptionType.COLLECTION
-                    || type == SubscriptionType.RESOURCE && id.equals(resourceId)
-                    || type == SubscriptionType.SELECTED_COLLECTION && resourceIds.contains(id));
-        }
-
-        boolean acceptsCollection(String name) {
-            return type == SubscriptionType.COLLECTION && resourceName.equals(name);
-        }
-
-        boolean acceptsSelectedCollection(String name, Set<String> ids) {
-            return type == SubscriptionType.SELECTED_COLLECTION
-                    && resourceName.equals(name)
-                    && resourceIds.equals(ids);
+        boolean accepts(String name, String id) {
+            return resourceName.equals(name) && resourceIds.contains(id);
         }
     }
 }

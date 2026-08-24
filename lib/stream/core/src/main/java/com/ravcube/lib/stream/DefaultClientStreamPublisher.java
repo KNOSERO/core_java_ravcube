@@ -2,7 +2,6 @@ package com.ravcube.lib.stream;
 
 import org.springframework.stereotype.Component;
 
-import java.util.Collection;
 import java.util.Objects;
 
 @Component
@@ -15,17 +14,7 @@ public final class DefaultClientStreamPublisher implements ClientStreamPublisher
     }
 
     @Override
-    public <T> void refresh(String resourceName, String resourceId, T payload) {
-        registry.publishResource(resourceName, resourceId, payload);
-    }
-
-    @Override
-    public <T> void refresh(String resourceName, T payload) {
-        registry.publishCollection(resourceName, payload);
-    }
-
-    @Override
-    public <T> void refresh(String resourceName, Collection<String> resourceIds, T payload) {
-        registry.publishSelectedCollection(resourceName, resourceIds, payload);
+    public void publish(String resourceName, String resourceId, Object payload) {
+        registry.publish(resourceName, resourceId, payload);
     }
 }

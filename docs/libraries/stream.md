@@ -1,8 +1,8 @@
 # Stream
 
 The Stream modules provide a small Spring MVC implementation for server-sent
-events (SSE). They let an application expose live refreshes of one resource,
-a whole collection, or a selected set of resource ids.
+events (SSE). They let an application subscribe to one or more resource ids and
+receive single-resource refreshes.
 
 ## Modules
 
@@ -11,9 +11,9 @@ lib:stream:api
 lib:stream:core
 ```
 
-`lib:stream:api` contains the framework-independent contracts used by the
-application. `lib:stream:core` contains the in-memory SSE registry, Spring MVC
-endpoints, and the default publisher.
+`lib:stream:api` contains the framework-independent resource handler and
+publisher contracts. `lib:stream:core` contains the in-memory SSE registry,
+Spring MVC endpoints, and the default publisher.
 
 ## Dependency
 
@@ -29,8 +29,8 @@ The core module exposes the API module transitively.
 
 ## Public API
 
-All resource ids are represented as strings at the HTTP boundary. A service can
-implement the matching interface and use the injected `ClientStreamPublisher`:
+A resource handler provides the resource name and loads the current resource by
+id. Its `update(id)` method loads the resource and publishes one update:
 
 ```java
 @Component
@@ -43,13 +43,13 @@ final class PolicyClaimStream implements ClientRestResourceStream<PolicyClaimDto
     }
 
     @Override
-    public ClientStreamPublisher publisher() {
-        return publisher;
+    public String resourceName() {
+        return "policies.claims";
     }
 
     @Override
-    public String resourceName() {
-        return "policies.claims";
+    public ClientStreamPublisher publisher() {
+        return publisher;
     }
 
     @Override
@@ -57,24 +57,17 @@ final class PolicyClaimStream implements ClientRestResourceStream<PolicyClaimDto
         return claimQuery.load(resourceId);
     }
 }
+
+policyClaimStream.update(claimId);
 ```
 
-`ClientRestResourceStream<T>` combines the resource subscription contract with
-the update handler. Calling `update(id)` loads the current resource through
-`resource(id)` and publishes it to the stream.
+If the resource does not exist, `update(id)` returns `false` and nothing is
+published.
 
-For a manual publication, use:
-
-```java
-policyClaimStream.refresh(claimId, payload);
-```
-
-For collection-shaped payloads use `ClientCollectionStream<T>`, and for a
-selected set of ids use `ClientSelectedCollectionStream<T>`:
+For a payload that is already loaded, the publisher exposes one operation:
 
 ```java
-collectionStream.refresh(claims);
-selectedStream.refresh(List.of("claim-1", "claim-2"), claims);
+publisher.publish("policies.claims", claimId, payload);
 ```
 
 ## HTTP endpoints
@@ -85,52 +78,32 @@ changed with `ravcube.stream.timeout`.
 
 | Method | Endpoint | Behavior |
 | --- | --- | --- |
-| `GET` | `/streams/{resourceName}/{resourceId}` | subscribes to one resource; sends an initial `refresh` event when a matching `ClientRestResourceStream` exists |
-| `GET` | `/streams/{resourceName}` | subscribes to updates for the whole collection |
-| `GET` | `/streams/{resourceName}?ids=1&ids=2` | subscribes to updates matching exactly the selected ids |
-| `POST` | `/streams/updates/{resourceName}/{resourceId}` | loads the resource through the matching handler and publishes its current value |
+| `GET` | `/streams/{resourceName}/{resourceId}` | subscribes to one resource and sends an initial `refresh` event when a matching handler returns a payload |
+| `GET` | `/streams/{resourceName}?ids=1&ids=2` | subscribes to the selected resource ids |
+| `POST` | `/streams/updates/{resourceName}/{resourceId}` | loads and publishes one resource through the matching handler |
 
-The update endpoint returns `204 No Content`. It returns `404 Not Found` when
-the handler or resource does not exist.
+The update endpoint returns `204 No Content`. It returns `404 Not Found`
+when no matching handler exists or the handler returns `null`.
 
-A resource update is sent as a `refresh` SSE event to:
-
-- the subscriber of that exact resource;
-- all subscribers of the resource collection;
-- selected-collection subscribers that contain the updated id.
-
-The payload is serialized by Spring MVC using the application's normal message
-converters. Apply the application's regular authentication and authorization
-rules to these endpoints.
+Every update is sent as one `refresh` SSE event to subscriptions that contain
+the updated id. A subscription for ids `1,2` therefore receives the update for
+`1), but not the update for `3`.
 
 ## SSE event format
 
-Every refresh is sent with the SSE event name `refresh`:
+Every update uses the event name `refresh`:
 
 ```text
 event: refresh
-data: <serialized payload>
+data: <serialized resource payload>
 ```
 
-The registry is process-local and in-memory. It is intended for a single
-application instance. For multiple instances, publish the same refresh to every
-instance through an external event mechanism before calling the local publisher.
+The registry is process-local and in-memory. It is suitable for one application
+instance. In a multi-instance deployment, use the existing `lib:event` module
+to distribute an after-commit refresh request to every instance before calling
+the local publisher.
 
-## Naming
-
-`ClientStreamNames` provides stable names for resource shapes:
-
-| Shape | Name |
-| --- | --- |
-| Collection | `<resourceName>` |
-| Resource | `<resourceName>.<resourceId>` |
-| Selected collection | `<resourceName>.<sorted-id-1>,<sorted-id-2>` |
-
-The helper removes duplicate selected ids and sorts them, so equivalent id
-selections produce the same name.
-
-## Related modules
-
-- `lib:event:api` and `lib:event:core` can be used to distribute refresh requests
-  between application instances.
-- `lib:common` contains shared infrastructure used by other library modules.
+SSE is a live notification channel, not a durable event store. After a
+reconnect, the client should load the current resource through the normal
+authorized read API. Authentication and resource-level authorization remain the
+application's responsibility.

@@ -14,34 +14,37 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("${ravcube.stream.path:/streams}")
 public final class ClientStreamController {
 
     private final ClientStreamRegistry registry;
-    private final ClientStreamPublisher publisher;
     private final List<ClientRestResourceStream<?>> resourceStreams;
 
     public ClientStreamController(
             ClientStreamRegistry registry,
-            ClientStreamPublisher publisher,
             List<ClientRestResourceStream<?>> resourceStreams
     ) {
         this.registry = Objects.requireNonNull(registry, "registry must not be null");
-        this.publisher = Objects.requireNonNull(publisher, "publisher must not be null");
         this.resourceStreams = List.copyOf(resourceStreams);
     }
 
     @GetMapping(value = "/{resourceName}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter subscribeCollection(
+    public SseEmitter subscribeResources(
             @PathVariable String resourceName,
-            @RequestParam(name = "ids", required = false) List<String> resourceIds
+            @RequestParam(name = "ids") List<String> resourceIds
     ) {
-        if (resourceIds == null || resourceIds.isEmpty()) {
-            return registry.subscribeCollection(resourceName);
+        try {
+            return registry.subscribe(resourceName, resourceIds);
+        } catch (IllegalArgumentException exception) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    exception.getMessage(),
+                    exception
+            );
         }
-        return registry.subscribeSelectedCollection(resourceName, resourceIds);
     }
 
     @GetMapping(value = "/{resourceName}/{resourceId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -49,13 +52,15 @@ public final class ClientStreamController {
             @PathVariable String resourceName,
             @PathVariable String resourceId
     ) {
-        final SseEmitter emitter = registry.subscribeResource(resourceName, resourceId);
-        findResourceStream(resourceName).ifPresent(stream -> {
-            final Object payload = stream.resource(resourceId);
-            if (payload != null) {
-                registry.sendInitial(emitter, payload);
-            }
-        });
+        final Optional<ClientRestResourceStream<?>> stream = findResourceStream(resourceName);
+        final Object initialPayload = stream
+                .map(resourceHandler -> resourceHandler.resource(resourceId))
+                .orElse(null);
+
+        final SseEmitter emitter = registry.subscribe(resourceName, List.of(resourceId));
+        if (initialPayload != null) {
+            registry.sendInitial(emitter, initialPayload);
+        }
         return emitter;
     }
 
@@ -70,16 +75,14 @@ public final class ClientStreamController {
                         "No stream resource handler registered for: " + resourceName
                 ));
 
-        final Object payload = stream.resource(resourceId);
-        if (payload == null) {
+        if (!stream.update(resourceId)) {
             return ResponseEntity.notFound().build();
         }
 
-        publisher.refresh(resourceName, resourceId, payload);
         return ResponseEntity.noContent().build();
     }
 
-    private java.util.Optional<ClientRestResourceStream<?>> findResourceStream(String resourceName) {
+    private Optional<ClientRestResourceStream<?>> findResourceStream(String resourceName) {
         final List<ClientRestResourceStream<?>> matches = resourceStreams.stream()
                 .filter(stream -> resourceName.equals(stream.resourceName()))
                 .toList();
