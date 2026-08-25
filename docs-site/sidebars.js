@@ -19,6 +19,7 @@ module.exports = {
         'libraries/data',
         'libraries/search',
         'libraries/event',
+        'libraries/logger',
         'libraries/stream',
         'libraries/security',
         'libraries/eureka',
