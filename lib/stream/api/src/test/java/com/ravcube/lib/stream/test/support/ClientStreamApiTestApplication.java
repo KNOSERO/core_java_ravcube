@@ -1,7 +1,6 @@
 package com.ravcube.lib.stream.test.support;
 
 import com.ravcube.lib.stream.api.ClientStreamAuthorization;
-import com.ravcube.lib.stream.api.ClientStreamResourceReader;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -28,21 +27,7 @@ public class ClientStreamApiTestApplication {
     }
 
     @Bean
-    ClientStreamResourceReader<String> claims() {
-        return new ClientStreamResourceReader<>() {
-            @Override
-            public String resourceName() {
-                return "claims";
-            }
-
-            @Override
-            public String resource(String resourceId) {
-                return "claim:" + resourceId;
-            }
-        };
-    }
-
-    @Bean
+    PlatformTransactionManager transactionManager() {    @Bean
     PlatformTransactionManager transactionManager() {
         return new AbstractPlatformTransactionManager() {
             @Override
