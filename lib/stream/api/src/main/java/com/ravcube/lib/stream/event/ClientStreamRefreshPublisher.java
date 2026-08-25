@@ -15,6 +15,8 @@ import java.util.Objects;
 @Profile("kafka")
 final class ClientStreamRefreshPublisher extends DefaultKafkaPublisher<ClientStreamRefreshEvent> {
 
+    private static final int MAX_PUBLISH_ATTEMPTS = 3;
+
     private final ClientStreamKafkaProperties properties;
 
     ClientStreamRefreshPublisher(ClientStreamKafkaProperties properties) {
@@ -29,6 +31,11 @@ final class ClientStreamRefreshPublisher extends DefaultKafkaPublisher<ClientStr
                     "ClientStreamRefreshEvent must be published inside an active transaction"
             );
         }
+    }
+
+    @Override
+    protected void on(ClientStreamRefreshEvent event) {
+        publishToKafka(event, baseTopic(event), MAX_PUBLISH_ATTEMPTS);
     }
 
     @Override
