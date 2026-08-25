@@ -12,14 +12,11 @@ class ClientStreamServiceTest {
     @Test
     void changedResourceNotifiesSubscribedClient() {
         final RecordingSseEmitter emitter = new RecordingSseEmitter();
-        final ClientStreamRegistry registry = ClientStreamRegistryTestSupport.registry(
-                (resourceName, resourceId) -> true,
-                emitter
-        );
+        final ClientStreamRegistry registry = ClientStreamRegistryTestSupport.registry(emitter);
         final ClientStreamService service = new ClientStreamService(registry);
 
         service.subscribe("claims", "1");
-        service.refresh("claims", "1");
+        service.refresh("claims", "1", 42);
 
         assertEquals(1, emitter.eventCount());
     }
