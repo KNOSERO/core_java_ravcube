@@ -1,6 +1,5 @@
 package com.ravcube.lib.stream.test.support;
 
-import com.ravcube.lib.stream.api.ClientStreamAuthorization;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -19,12 +18,6 @@ import org.springframework.transaction.support.TransactionTemplate;
         "com.ravcube.lib.event"
 })
 public class ClientStreamApiTestApplication {
-
-    @Bean
-    @Primary
-    ClientStreamAuthorization authorization() {
-        return (resourceName, resourceId) -> true;
-    }
 
     @Bean
     PlatformTransactionManager transactionManager() {
