@@ -21,15 +21,26 @@ public final class KafkaPublishSupport<E extends DomainEvent> {
     }
 
     public void publish(E event) {
-        final E payload = Objects.requireNonNull(event, "payload must not be null");
+        publish(event, DomainEvent.getTopic(event.getClass()));
+    }
 
-        final String baseTopic = DomainEvent.getTopic(payload.getClass());
-        final String topic = eventSource.formatTopic(baseTopic);
+    public void publish(E event, String baseTopic) {
+        final E payload = Objects.requireNonNull(event, "payload must not be null");
+        final String validatedBaseTopic = requireText(baseTopic, "baseTopic");
+        final String topic = eventSource.formatTopic(validatedBaseTopic);
         final String key = Objects.requireNonNull(payload.getKey(), "key must not be null");
 
         final ProducerRecord<String, E> record = new ProducerRecord<>(topic, key, payload);
         headers.applyTo(record);
 
         kafkaTemplate.send(record);
+    }
+
+    private static String requireText(String value, String name) {
+        Objects.requireNonNull(value, name + " must not be null");
+        if (value.isBlank()) {
+            throw new IllegalArgumentException(name + " must not be blank");
+        }
+        return value;
     }
 }
