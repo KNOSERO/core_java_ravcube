@@ -8,7 +8,9 @@ dependencies {
     implementation(project(":lib:event:core"))
     implementation(libs.spring.context)
     implementation(libs.spring.web)
+    implementation(libs.spring.kafka)
 
+    testImplementation(project(":test:kafka"))
     testImplementation(libs.spring.test)
     testImplementation(libs.junit.jupiter)
     runtimeOnly(libs.junit.launcher)
