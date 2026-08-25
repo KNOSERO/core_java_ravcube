@@ -15,24 +15,29 @@ lib:stream:core
 The dependency direction is:
 
 ```text
-stream:core -> stream:common
-stream:core -> stream:api
+application -> stream:api
+stream:api -> stream:common (api)
+stream:api -> stream:core (implementation)
+stream:core -> stream:common (implementation)
 stream:common -> lib:event:api
 stream:core -> lib:event:core
 ```
 
-`lib:stream:common` contains the shared refresh event. `lib:stream:api`
-contains only read-side contracts. `lib:stream:core` contains the SSE
-registry, read handlers, event listener, and Spring MVC transport.
+`lib:stream:common` contains all shared contracts: external read interfaces and
+the refresh event. `lib:stream:api` is the public facade used by applications:
+it re-exports `common` and brings the `core` implementation at runtime.
+`lib:stream:core` contains only the SSE registry, read handlers, event listener,
+and Spring MVC transport.
 
 ```text
-lib/stream/common/src/main/java/com/ravcube/lib/stream/common
-  event/
+lib/stream/common/src/main/java/com/ravcube/lib/stream
+  api/                                # shared read contracts
+    ClientStreamResourceReader.java
+    ClientStreamAuthorization.java
+  common/event/
     ClientStreamRefreshEvent.java     # shared event contract
 
-lib/stream/api/src/main/java/com/ravcube/lib/stream/api
-  ClientStreamResourceReader.java     # read current resource by id
-  ClientStreamAuthorization.java      # resource-level read authorization
+lib/stream/api/build.gradle.kts        # public facade: common + core runtime
 
 lib/stream/core/src/main/java/com/ravcube/lib/stream
   application/                         # resource catalog and limits
@@ -40,6 +45,14 @@ lib/stream/core/src/main/java/com/ravcube/lib/stream
   infrastructure/config/              # runtime properties
   infrastructure/sse/                  # SseEmitter registry
   web/                                 # read-only HTTP/SSE endpoints
+```
+
+An external application depends only on the facade:
+
+```kotlin
+dependencies {
+    implementation(project(":lib:stream:api"))
+}
 ```
 
 ## Read contracts

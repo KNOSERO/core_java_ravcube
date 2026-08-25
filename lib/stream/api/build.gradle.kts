@@ -3,6 +3,6 @@ plugins {
 }
 
 dependencies {
-    testImplementation(libs.junit.jupiter)
-    runtimeOnly(libs.junit.launcher)
+    api(project(":lib:stream:common"))
+    implementation(project(":lib:stream:core"))
 }
