@@ -19,14 +19,22 @@ import java.util.Objects;
 import java.util.function.Supplier;
 
 @RestController
-@RequestMapping("${ravcube.stream.path:/streams}")
+@RequestMapping("$" + "{ravcube.stream.path:/streams}")
 public final class ClientStreamController {
 
     private final ClientStreamService service;
+    private final ClientStreamClientKeyResolver clientKeyResolver;
 
     @Autowired
-    ClientStreamController(ClientStreamService service) {
+    ClientStreamController(
+            ClientStreamService service,
+            ClientStreamClientKeyResolver clientKeyResolver
+    ) {
         this.service = Objects.requireNonNull(service, "service must not be null");
+        this.clientKeyResolver = Objects.requireNonNull(
+                clientKeyResolver,
+                "clientKeyResolver must not be null"
+        );
     }
 
     @GetMapping(value = "/{resourceName}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -35,7 +43,11 @@ public final class ClientStreamController {
             @RequestParam(name = "ids") List<String> resourceIds,
             HttpServletRequest request
     ) {
-        return subscribe(() -> service.subscribe(resourceName, resourceIds, clientKey(request)));
+        return subscribe(() -> service.subscribe(
+                resourceName,
+                resourceIds,
+                clientKeyResolver.resolve(request)
+        ));
     }
 
     @GetMapping(value = "/{resourceName}/{resourceId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -44,12 +56,11 @@ public final class ClientStreamController {
             @PathVariable String resourceId,
             HttpServletRequest request
     ) {
-        return subscribe(() -> service.subscribe(resourceName, resourceId, clientKey(request)));
-    }
-
-    private static String clientKey(HttpServletRequest request) {
-        final String remoteAddress = request.getRemoteAddr();
-        return remoteAddress == null || remoteAddress.isBlank() ? "unknown" : remoteAddress;
+        return subscribe(() -> service.subscribe(
+                resourceName,
+                resourceId,
+                clientKeyResolver.resolve(request)
+        ));
     }
 
     private static SseEmitter subscribe(Supplier<SseEmitter> action) {

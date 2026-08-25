@@ -76,6 +76,37 @@ class ClientStreamApiIntegrationTest {
     }
 
     @Test
+    void refreshIsRoutedOnlyToMatchingSseClient() throws Exception {
+        try (
+                SseConnection subscribed = openStream("/streams/claims?ids=1");
+                SseConnection other = openStream("/streams/claims?ids=2")
+        ) {
+            publishRefresh("claims", "1", 42);
+
+            assertTrue(subscribed.readUntil("\"version\":42").contains("\"resourceId\":\"1\""));
+            assertThrows(
+                    TimeoutException.class,
+                    () -> other.readUntil("\"version\":42", Duration.ofSeconds(2))
+            );
+        }
+    }
+
+    @Test
+    void rollbackDoesNotPublishRefresh() throws Exception {
+        try (SseConnection connection = openStream("/streams/claims?ids=1")) {
+            transactionTemplate.executeWithoutResult(status -> {
+                eventPublisher.publish(new ClientStreamRefreshEvent("claims", "1", 42));
+                status.setRollbackOnly();
+            });
+
+            assertThrows(
+                    TimeoutException.class,
+                    () -> connection.readUntil("\"version\":42", Duration.ofSeconds(2))
+            );
+        }
+    }
+
+    @Test
     void refreshOutsideTransactionIsRejected() {
         assertThrows(
                 IllegalStateException.class,
@@ -136,9 +167,13 @@ class ClientStreamApiIntegrationTest {
         }
 
         private String readUntil(String expected) throws Exception {
+            return readUntil(expected, READ_TIMEOUT);
+        }
+
+        private String readUntil(String expected, Duration timeout) throws Exception {
             Future<String> read = readerExecutor.submit(() -> readUntilBlocking(expected));
             try {
-                return read.get(READ_TIMEOUT.toSeconds(), TimeUnit.SECONDS);
+                return read.get(timeout.toSeconds(), TimeUnit.SECONDS);
             } catch (TimeoutException | ExecutionException exception) {
                 response.body().close();
                 read.cancel(true);

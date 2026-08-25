@@ -7,7 +7,10 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.springframework.kafka.core.KafkaTemplate;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 public final class KafkaPublishSupport<E extends DomainEvent> {
 
@@ -40,15 +43,45 @@ public final class KafkaPublishSupport<E extends DomainEvent> {
     }
 
     public void publish(E event, String baseTopic, int maxAttempts) {
+        publish(event, baseTopic, maxAttempts, Duration.ZERO, () -> {
+        });
+    }
+
+    public void publish(
+            E event,
+            String baseTopic,
+            int maxAttempts,
+            Duration retryBackoff,
+            Runnable onExhausted
+    ) {
         final E payload = Objects.requireNonNull(event, "payload must not be null");
         final String validatedBaseTopic = requireText(baseTopic, "baseTopic");
+        final Duration validatedBackoff = Objects.requireNonNull(
+                retryBackoff,
+                "retryBackoff must not be null"
+        );
+        if (validatedBackoff.isNegative()) {
+            throw new IllegalArgumentException("retryBackoff must not be negative");
+        }
         if (maxAttempts <= 0) {
             throw new IllegalArgumentException("maxAttempts must be greater than zero");
         }
-        send(payload, validatedBaseTopic, maxAttempts);
+        send(
+                payload,
+                validatedBaseTopic,
+                maxAttempts,
+                validatedBackoff,
+                Objects.requireNonNull(onExhausted, "onExhausted must not be null")
+        );
     }
 
-    private void send(E payload, String baseTopic, int attemptsRemaining) {
+    private void send(
+            E payload,
+            String baseTopic,
+            int attemptsRemaining,
+            Duration retryBackoff,
+            Runnable onExhausted
+    ) {
         final String topic = eventSource.formatTopic(baseTopic);
         final String key = Objects.requireNonNull(payload.getKey(), "key must not be null");
         final ProducerRecord<String, E> record = new ProducerRecord<>(topic, key, payload);
@@ -61,10 +94,28 @@ public final class KafkaPublishSupport<E extends DomainEvent> {
                         topic,
                         key
                 );
-                send(payload, baseTopic, attemptsRemaining - 1);
+                CompletableFuture.delayedExecutor(
+                        retryBackoff.toMillis(),
+                        TimeUnit.MILLISECONDS
+                ).execute(() -> send(
+                        payload,
+                        baseTopic,
+                        attemptsRemaining - 1,
+                        retryBackoff,
+                        onExhausted
+                ));
                 return;
             }
             if (failure != null) {
+                try {
+                    onExhausted.run();
+                } catch (RuntimeException callbackFailure) {
+                    logger.warn(
+                            "Kafka publish failure callback failed for topic {} and key {}",
+                            topic,
+                            key
+                    );
+                }
                 logger.error(
                         "Kafka publish failed for topic {} and key {}",
                         failure,

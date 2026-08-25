@@ -7,6 +7,7 @@ import com.ravcube.lib.logger.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
 
+import java.time.Duration;
 import java.util.Objects;
 
 public class DefaultKafkaPublisher<E extends DomainEvent> extends AbstractCommitPublisher<E> {
@@ -24,6 +25,22 @@ public class DefaultKafkaPublisher<E extends DomainEvent> extends AbstractCommit
 
     protected final void publishToKafka(E event, String baseTopic, int maxAttempts) {
         kafkaPublisher().publish(event, baseTopic, maxAttempts);
+    }
+
+    protected final void publishToKafka(
+            E event,
+            String baseTopic,
+            int maxAttempts,
+            Duration retryBackoff,
+            Runnable onExhausted
+    ) {
+        kafkaPublisher().publish(
+                event,
+                baseTopic,
+                maxAttempts,
+                retryBackoff,
+                onExhausted
+        );
     }
 
     protected final KafkaPublishSupport<E> kafkaPublisher() {

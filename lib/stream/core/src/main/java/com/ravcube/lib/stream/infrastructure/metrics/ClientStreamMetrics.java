@@ -13,6 +13,7 @@ public final class ClientStreamMetrics {
     private final Counter queueOverflows;
     private final Counter sendFailures;
     private final Counter heartbeatFailures;
+    private final Counter publishFailures;
 
     private ClientStreamMetrics(MeterRegistry registry) {
         if (registry == null) {
@@ -20,6 +21,7 @@ public final class ClientStreamMetrics {
             queueOverflows = null;
             sendFailures = null;
             heartbeatFailures = null;
+            publishFailures = null;
             return;
         }
 
@@ -34,6 +36,9 @@ public final class ClientStreamMetrics {
                 .register(registry);
         heartbeatFailures = Counter.builder("ravcube.stream.heartbeat.failure")
                 .description("Stream heartbeat sends that failed")
+                .register(registry);
+        publishFailures = Counter.builder("ravcube.stream.events.publish.failure")
+                .description("Stream refresh publications exhausted their retry attempts")
                 .register(registry);
         registry.gauge(
                 "ravcube.stream.subscriptions.active",
@@ -72,6 +77,10 @@ public final class ClientStreamMetrics {
 
     public void heartbeatFailure() {
         increment(heartbeatFailures);
+    }
+
+    public void publishFailure() {
+        increment(publishFailures);
     }
 
     private static void increment(Counter counter) {

@@ -13,10 +13,8 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Deque;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -50,8 +48,8 @@ public final class ClientStreamRegistry implements DisposableBean {
     private final ScheduledExecutorService ownedHeartbeatScheduler;
     private final ClientStreamMetrics metrics;
     private final Logger logger;
-    private final java.util.concurrent.CopyOnWriteArrayList<RegisteredSubscription> subscriptions =
-            new java.util.concurrent.CopyOnWriteArrayList<>();
+    private final Object subscriptionLock = new Object();
+    private final ClientStreamSubscriptionIndex subscriptions = new ClientStreamSubscriptionIndex();
     private final Map<String, Integer> activeSubscriptionsByClient = new HashMap<>();
 
     @Autowired
@@ -100,6 +98,24 @@ public final class ClientStreamRegistry implements DisposableBean {
                 false,
                 Logger.noop(),
                 null,
+                false,
+                ClientStreamMetrics.noop()
+        );
+    }
+
+    ClientStreamRegistry(
+            ClientStreamProperties properties,
+            LongFunction<SseEmitter> emitterFactory,
+            Executor sender,
+            ScheduledExecutorService heartbeatScheduler
+    ) {
+        this(
+                properties,
+                emitterFactory,
+                sender,
+                false,
+                Logger.noop(),
+                heartbeatScheduler,
                 false,
                 ClientStreamMetrics.noop()
         );
@@ -156,8 +172,8 @@ public final class ClientStreamRegistry implements DisposableBean {
         );
 
         final SseEmitter emitter;
-        final RegisteredSubscription registered;
-        synchronized (subscriptions) {
+        final ClientStreamRegisteredSubscription registered;
+        synchronized (subscriptionLock) {
             if (subscriptions.size() >= maxSubscriptions) {
                 metrics.subscriptionRejected();
                 throw new ClientStreamCapacityExceededException(
@@ -180,7 +196,7 @@ public final class ClientStreamRegistry implements DisposableBean {
                     emitterFactory.apply(timeout.toMillis()),
                     "emitterFactory returned null"
             );
-            registered = new RegisteredSubscription(
+            registered = new ClientStreamRegisteredSubscription(
                     subscription,
                     emitter,
                     validatedClientKey,
@@ -207,21 +223,22 @@ public final class ClientStreamRegistry implements DisposableBean {
         final ClientStreamRefreshNotification notification =
                 new ClientStreamRefreshNotification(resourceId, version);
 
-        for (RegisteredSubscription subscription : subscriptions) {
-            if (!subscription.accepts(validatedResourceName, notification.resourceId())) {
-                continue;
-            }
+        final Set<ClientStreamRegisteredSubscription> matching;
+        synchronized (subscriptionLock) {
+            matching = subscriptions.matching(validatedResourceName, notification.resourceId());
+        }
 
-            final EnqueueResult result = subscription.enqueue(notification);
-            if (result == EnqueueResult.SCHEDULE) {
+        for (ClientStreamRegisteredSubscription subscription : matching) {
+            final ClientStreamEnqueueResult result = subscription.enqueue(notification);
+            if (result == ClientStreamEnqueueResult.SCHEDULE) {
                 schedule(subscription);
-            } else if (result == EnqueueResult.OVERFLOW) {
+            } else if (result == ClientStreamEnqueueResult.OVERFLOW) {
                 removeSlowSubscription(subscription);
             }
         }
     }
 
-    private void schedule(RegisteredSubscription subscription) {
+    private void schedule(ClientStreamRegisteredSubscription subscription) {
         try {
             sender.execute(() -> drain(subscription));
         } catch (RejectedExecutionException exception) {
@@ -229,23 +246,23 @@ public final class ClientStreamRegistry implements DisposableBean {
             logger.error(
                     "SSE sender rejected a stream subscription for resource {}",
                     exception,
-                    subscription.subscription.resourceName
+                    subscription.resourceName()
             );
-            remove(subscription.emitter);
-            subscription.emitter.completeWithError(exception);
+            remove(subscription.emitter());
+            subscription.emitter().completeWithError(exception);
         }
     }
 
-    private void drain(RegisteredSubscription subscription) {
-        while (true) {
+    private void drain(ClientStreamRegisteredSubscription subscription) {
+        while (isRegistered(subscription)) {
             final ClientStreamRefreshNotification notification = subscription.next();
             if (notification == null) {
                 return;
             }
 
             try {
-                synchronized (subscription.emitter) {
-                    subscription.emitter.send(
+                synchronized (subscription.emitter()) {
+                    subscription.emitter().send(
                             SseEmitter.event()
                                     .name(REFRESH_EVENT)
                                     .data(notification)
@@ -255,52 +272,53 @@ public final class ClientStreamRegistry implements DisposableBean {
                 metrics.sendFailure();
                 logger.warn(
                         "SSE send failed for resource {}",
-                        subscription.subscription.resourceName
+                        subscription.resourceName()
                 );
-                remove(subscription.emitter);
-                subscription.emitter.completeWithError(exception);
+                remove(subscription.emitter());
+                subscription.emitter().completeWithError(exception);
                 return;
             }
         }
     }
 
-    private void scheduleHeartbeat(RegisteredSubscription subscription) {
+    private void scheduleHeartbeat(ClientStreamRegisteredSubscription subscription) {
         if (heartbeatScheduler == null) {
             return;
         }
 
         try {
-            subscription.heartbeat = heartbeatScheduler.scheduleAtFixedRate(
+            final ScheduledFuture<?> heartbeat = heartbeatScheduler.scheduleAtFixedRate(
                     () -> scheduleHeartbeatSend(subscription),
                     heartbeatInterval.toMillis(),
                     heartbeatInterval.toMillis(),
                     java.util.concurrent.TimeUnit.MILLISECONDS
             );
+            subscription.heartbeat(heartbeat);
         } catch (RejectedExecutionException exception) {
             metrics.heartbeatFailure();
-            remove(subscription.emitter);
-            subscription.emitter.completeWithError(exception);
+            remove(subscription.emitter());
+            subscription.emitter().completeWithError(exception);
         }
     }
 
-    private void scheduleHeartbeatSend(RegisteredSubscription subscription) {
+    private void scheduleHeartbeatSend(ClientStreamRegisteredSubscription subscription) {
         try {
             sender.execute(() -> sendHeartbeat(subscription));
         } catch (RejectedExecutionException exception) {
             metrics.heartbeatFailure();
-            remove(subscription.emitter);
-            subscription.emitter.completeWithError(exception);
+            remove(subscription.emitter());
+            subscription.emitter().completeWithError(exception);
         }
     }
 
-    private void sendHeartbeat(RegisteredSubscription subscription) {
-        if (!subscriptions.contains(subscription)) {
+    private void sendHeartbeat(ClientStreamRegisteredSubscription subscription) {
+        if (!isRegistered(subscription)) {
             return;
         }
 
         try {
-            synchronized (subscription.emitter) {
-                subscription.emitter.send(
+            synchronized (subscription.emitter()) {
+                subscription.emitter().send(
                         SseEmitter.event()
                                 .reconnectTime(RECONNECT_DELAY_MILLIS)
                                 .comment("heartbeat")
@@ -310,23 +328,29 @@ public final class ClientStreamRegistry implements DisposableBean {
             metrics.heartbeatFailure();
             logger.warn(
                     "SSE heartbeat failed for resource {}",
-                    subscription.subscription.resourceName
+                    subscription.resourceName()
             );
-            remove(subscription.emitter);
-            subscription.emitter.completeWithError(exception);
+            remove(subscription.emitter());
+            subscription.emitter().completeWithError(exception);
         }
     }
 
-    private void removeSlowSubscription(RegisteredSubscription subscription) {
+    private void removeSlowSubscription(ClientStreamRegisteredSubscription subscription) {
         metrics.queueOverflow();
         logger.warn(
                 "SSE subscription removed after reaching the pending event limit for resource {}",
-                subscription.subscription.resourceName
+                subscription.resourceName()
         );
-        remove(subscription.emitter);
-        subscription.emitter.completeWithError(
+        remove(subscription.emitter());
+        subscription.emitter().completeWithError(
                 new IOException("SSE subscriber is too slow")
         );
+    }
+
+    private boolean isRegistered(ClientStreamRegisteredSubscription subscription) {
+        synchronized (subscriptionLock) {
+            return subscriptions.contains(subscription);
+        }
     }
 
     private static ExecutorService createSender() {
@@ -342,14 +366,11 @@ public final class ClientStreamRegistry implements DisposableBean {
     }
 
     private void remove(SseEmitter emitter) {
-        RegisteredSubscription removedSubscription = null;
-        synchronized (subscriptions) {
-            for (RegisteredSubscription subscription : subscriptions) {
-                if (subscription.emitter == emitter && subscriptions.remove(subscription)) {
-                    decrementClientSubscription(subscription.clientKey);
-                    removedSubscription = subscription;
-                    break;
-                }
+        final ClientStreamRegisteredSubscription removedSubscription;
+        synchronized (subscriptionLock) {
+            removedSubscription = subscriptions.removeByEmitter(emitter);
+            if (removedSubscription != null) {
+                decrementClientSubscription(removedSubscription.clientKey());
             }
         }
 
@@ -373,11 +394,22 @@ public final class ClientStreamRegistry implements DisposableBean {
     }
 
     int activeSubscriptions() {
-        return subscriptions.size();
+        synchronized (subscriptionLock) {
+            return subscriptions.size();
+        }
     }
 
     @Override
     public void destroy() {
+        final Set<ClientStreamRegisteredSubscription> active;
+        synchronized (subscriptionLock) {
+            active = subscriptions.snapshot();
+        }
+        for (ClientStreamRegisteredSubscription subscription : active) {
+            remove(subscription.emitter());
+            subscription.emitter().complete();
+        }
+
         if (ownedSender != null) {
             ownedSender.shutdownNow();
         }
@@ -411,73 +443,5 @@ public final class ClientStreamRegistry implements DisposableBean {
             throw new IllegalArgumentException(name + " must not be blank");
         }
         return value;
-    }
-
-    private enum EnqueueResult {
-        SCHEDULE,
-        QUEUED,
-        DUPLICATE,
-        OVERFLOW
-    }
-
-    private static final class RegisteredSubscription {
-
-        private final ClientStreamSubscription subscription;
-        private final SseEmitter emitter;
-        private final String clientKey;
-        private final int maxPendingEvents;
-        private final Deque<ClientStreamRefreshNotification> pending = new ArrayDeque<>();
-        private final Map<String, Long> latestVersions = new HashMap<>();
-        private boolean sending;
-        private volatile ScheduledFuture<?> heartbeat;
-
-        private RegisteredSubscription(
-                ClientStreamSubscription subscription,
-                SseEmitter emitter,
-                String clientKey,
-                int maxPendingEvents
-        ) {
-            this.subscription = subscription;
-            this.emitter = emitter;
-            this.clientKey = clientKey;
-            this.maxPendingEvents = maxPendingEvents;
-        }
-
-        private synchronized boolean accepts(String resourceName, String resourceId) {
-            return subscription.accepts(resourceName, resourceId);
-        }
-
-        private synchronized EnqueueResult enqueue(ClientStreamRefreshNotification notification) {
-            final long latestVersion = latestVersions.getOrDefault(notification.resourceId(), -1L);
-            if (notification.version() <= latestVersion) {
-                return EnqueueResult.DUPLICATE;
-            }
-            if (pending.size() >= maxPendingEvents) {
-                return EnqueueResult.OVERFLOW;
-            }
-
-            latestVersions.put(notification.resourceId(), notification.version());
-            pending.addLast(notification);
-            if (!sending) {
-                sending = true;
-                return EnqueueResult.SCHEDULE;
-            }
-            return EnqueueResult.QUEUED;
-        }
-
-        private synchronized ClientStreamRefreshNotification next() {
-            if (pending.isEmpty()) {
-                sending = false;
-                return null;
-            }
-            return pending.removeFirst();
-        }
-
-        private void cancelHeartbeat() {
-            final ScheduledFuture<?> task = heartbeat;
-            if (task != null) {
-                task.cancel(false);
-            }
-        }
     }
 }

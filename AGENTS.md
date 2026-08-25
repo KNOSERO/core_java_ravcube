@@ -229,7 +229,7 @@ Before finishing a change, verify:
 
 ## Stream/Event Boundary
 
-- stream:common contains only the public refresh event contract.
+- stream:common contains the public refresh event contract and transport-neutral integration errors; it must not contain Spring, HTTP, Kafka, or SSE implementation details.
 - stream:core owns SSE subscriptions, routing, limits, queues, and notification
   serialization; these implementation classes are not public library contracts.
 - stream:api exposes the HTTP controller and the event entry point needed by

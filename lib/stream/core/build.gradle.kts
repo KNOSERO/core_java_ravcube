@@ -1,5 +1,5 @@
 plugins {
-    `java-library`
+    \`java-library\`
     alias(libs.plugins.kotlin.jvm)
 }
 
@@ -12,6 +12,7 @@ dependencies {
     implementation(libs.spring.boot.actuator)
 
     testImplementation(libs.junit.jupiter)
+    testImplementation(libs.awaitility)
     runtimeOnly(libs.junit.launcher)
 }
 
