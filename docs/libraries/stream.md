@@ -65,8 +65,10 @@ lokalnego listenera Springowego do dostarczania refreshu.
 Kafka dostarcza rekord raz na grupę konsumencką, a nie raz do każdego procesu.
 Dlatego Stream używa dwóch identyfikatorów:
 
-- `service-name` — określa topic całego serwisu;
-- `instance-id` — określa grupę konkretnego poda.
+- `service-name` — określa topic całego serwisu; domyślnie pochodzi z
+  `spring.application.name`;
+- `instance-id` — określa grupę konkretnego poda; domyślnie pochodzi z
+  Kubernetesowego `HOSTNAME`.
 
 Dla konfiguracji:
 
@@ -131,30 +133,74 @@ Aplikacja nie musi zależeć bezpośrednio od `stream:common` ani
 
 ## Konfiguracja
 
-Profil `kafka` jest wymagany:
+Profil `kafka` jest wymagany. Nazwę serwisu ustawiasz standardową właściwością
+Spring Boot `spring.application.name`:
 
 ```yaml
 spring:
+  application:
+    name: claims-service
   profiles:
     active: kafka
 
 ravcube:
   stream:
-    kafka:
-      service-name: claims-service
-      # W Kubernetes najlepiej użyć nazwy poda.
-      instance-id: ${HOSTNAME}
-
     path: /streams
     timeout: PT30M
     max-ids-per-subscription: 100
     max-subscriptions: 1000
 ```
 
-`service-name` jest wymagane i musi być stabilne dla jednego serwisu.
-`instance-id` powinno być unikalne dla każdego poda. Jeżeli nie zostanie
-ustawione, biblioteka użyje wartości środowiskowej `HOSTNAME`, a poza
-środowiskiem z `HOSTNAME` wygeneruje identyfikator losowy.
+Biblioteka automatycznie:
+
+- użyje `spring.application.name` jako `service-name`;
+- użyje Kubernetesowego `HOSTNAME` jako `instance-id`;
+- zbuduje topic i grupę konsumencką bez konfiguracji per pod.
+
+Własne wartości można ustawić tylko wtedy, gdy aplikacja potrzebuje nadpisania:
+
+```yaml
+ravcube:
+  stream:
+    kafka:
+      service-name: custom-claims-service
+      instance-id: custom-instance-id
+```
+
+`service-name` musi być stabilne dla jednego serwisu i takie samo we
+wszystkich jego podach. `instance-id` musi być unikalne dla każdego poda.
+Jeżeli `HOSTNAME` nie jest dostępne, biblioteka wygeneruje identyfikator losowy.
+
+## Kubernetes
+
+W Kubernetes nie konfigurujesz osobno każdego poda. Wystarczy ustawić nazwę
+aplikacji na poziomie Deploymentu:
+
+```yaml
+spec:
+  template:
+    spec:
+      containers:
+        - name: claims
+          image: claims:latest
+          env:
+            - name: SPRING_APPLICATION_NAME
+              value: claims-service
+```
+
+Kubernetes automatycznie nada każdej replice unikalną nazwę poda i ustawia ją
+w `HOSTNAME`. Dla trzech replik biblioteka otrzyma więc logicznie:
+
+```text
+spring.application.name = claims-service
+HOSTNAME               = claims-7d8c9f6d4b-a1b2c
+HOSTNAME               = claims-7d8c9f6d4b-d3e4f
+HOSTNAME               = claims-7d8c9f6d4b-g5h6j
+```
+
+W efekcie wszystkie pody użyją wspólnego topicu, ale automatycznie utworzą
+różne grupy konsumenckie. Nie ustawiaj `instance-id` jako stałej wartości w
+ConfigMap, ponieważ wtedy wszystkie pody użyłyby tej samej grupy Kafka.
 
 ## Publikacja zmiany
 
