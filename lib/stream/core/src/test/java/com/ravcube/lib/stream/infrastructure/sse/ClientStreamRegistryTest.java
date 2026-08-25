@@ -22,7 +22,7 @@ class ClientStreamRegistryTest {
         final ClientStreamRegistry registry = registry((resourceName, resourceId) -> true, subscriber);
 
         registry.subscribe("claims", List.of("1"));
-        registry.publish("claims", "1", "claim-1");
+        registry.publish("claims", "1");
 
         assertEquals(1, subscriber.eventCount());
     }
@@ -33,7 +33,7 @@ class ClientStreamRegistryTest {
         final ClientStreamRegistry registry = registry((resourceName, resourceId) -> true, subscriber);
 
         registry.subscribe("claims", List.of("1"));
-        registry.publish("claims", "2", "claim-2");
+        registry.publish("claims", "2");
 
         assertEquals(0, subscriber.eventCount());
     }
