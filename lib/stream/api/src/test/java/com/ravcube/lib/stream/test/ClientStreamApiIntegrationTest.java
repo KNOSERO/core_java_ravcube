@@ -34,7 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @SpringBootTest(
         classes = ClientStreamApiTestApplication.class,
         properties = {
-                "ravcube.stream.kafka.service-name=stream-api-test",
+                "spring.application.name=stream-api-test",
                 "ravcube.stream.kafka.instance-id=test-pod"
         },
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
