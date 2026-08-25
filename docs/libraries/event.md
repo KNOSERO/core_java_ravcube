@@ -45,7 +45,7 @@ The default Kafka publisher uses the topic from `Topic`. A specialized
 publisher may override `baseTopic(event)` when one event family must be
 isolated per service:
 
-`java
+```java
 @Component
 @Profile("kafka")
 final class ServiceRefreshPublisher extends DefaultKafkaPublisher<ServiceRefresh> {
@@ -55,7 +55,7 @@ final class ServiceRefreshPublisher extends DefaultKafkaPublisher<ServiceRefresh
         return "service.refresh." + serviceName;
     }
 }
-`
+```
 
 The publisher still uses the Kafka commit suffix. The matching listener must
 subscribe to the same resolved topic. This extension is opt-in and does not
