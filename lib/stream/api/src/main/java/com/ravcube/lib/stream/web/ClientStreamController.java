@@ -1,6 +1,5 @@
 package com.ravcube.lib.stream.web;
 
-import com.ravcube.lib.stream.application.ClientStreamLimitExceededException;
 import com.ravcube.lib.stream.application.ClientStreamService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -17,7 +16,7 @@ import java.util.List;
 import java.util.Objects;
 
 @RestController
-@RequestMapping("${ravcube.stream.path:/streams}")
+@RequestMapping("\${ravcube.stream.path:/streams}")
 public final class ClientStreamController {
 
     private final ClientStreamService service;
@@ -32,10 +31,20 @@ public final class ClientStreamController {
             @PathVariable String resourceName,
             @RequestParam(name = "ids") List<String> resourceIds
     ) {
+        return subscribe(() -> service.subscribe(resourceName, resourceIds));
+    }
+
+    @GetMapping(value = "/{resourceName}/{resourceId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter subscribeResource(
+            @PathVariable String resourceName,
+            @PathVariable String resourceId
+    ) {
+        return subscribe(() -> service.subscribe(resourceName, resourceId));
+    }
+
+    private static SseEmitter subscribe(java.util.function.Supplier<SseEmitter> action) {
         try {
-            return service.subscribe(resourceName, resourceIds);
-        } catch (ClientStreamLimitExceededException exception) {
-            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, exception.getMessage(), exception);
+            return action.get();
         } catch (IllegalArgumentException exception) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -44,19 +53,4 @@ public final class ClientStreamController {
             );
         }
     }
-
-    @GetMapping(value = "/{resourceName}/{resourceId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter subscribeResource(
-            @PathVariable String resourceName,
-            @PathVariable String resourceId
-    ) {
-        try {
-            return service.subscribe(resourceName, resourceId);
-        } catch (ClientStreamLimitExceededException exception) {
-            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, exception.getMessage(), exception);
-        } catch (IllegalArgumentException exception) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage(), exception);
-        }
-    }
-
 }
