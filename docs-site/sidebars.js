@@ -34,7 +34,6 @@ module.exports = {
         'test-modules/awaitility',
         'test-modules/redis',
         'test-modules/kafka',
-        'test-modules/nats',
         'test-modules/postgresql',
         'test-modules/elasticsearch',
         'test-modules/keycloak',

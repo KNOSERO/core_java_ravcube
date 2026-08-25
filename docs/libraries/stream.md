@@ -105,44 +105,13 @@ import com.ravcube.lib.stream.common.event.ClientStreamRefreshEvent;
 eventPublisher.publish(new ClientStreamRefreshEvent("policies.claims", claimId));
 ```
 
-With the default profile, `stream:api` registers the event publisher and
-listener using `DefaultCommitPublisher` and `DefaultCommitListener`. With the
-`nats` profile, it uses `DefaultNatsPublisher` and
-`DefaultNatsCommitListener`. In both cases the refresh is handled after commit,
-loads the current resource, rechecks access for every SSE subscription, and
-sends one `refresh` event to matching resource ids.
+`stream:core` registers the event publisher and listener using
+`DefaultCommitPublisher` and `DefaultCommitListener`. The listener receives the
+event after commit, loads the current resource, rechecks access for every SSE
+subscription, and sends one `refresh` event to matching resource ids.
 
 The event contains only `resourceName` and `resourceId`; the payload is loaded
 after commit and is not transported through the event bus.
-
-## Multiple service pods
-
-Enable the `nats` profile when the same service can have multiple pods:
-
-```yaml
-spring:
-  profiles:
-    active: nats
-
-ravcube:
-  nats:
-    url: nats://nats:4222
-    subject-prefix: claims-service
-```
-
-All pods of one service must use the same `subject-prefix`. Different services
-must use different prefixes. The stream adapter uses a normal NATS broadcast
-subscription, without a queue group, so every pod receives the refresh signal.
-Each pod then reads the resource from its own source of truth and sends the
-payload only to its local authorized SSE clients. The payload is never sent
-through NATS.
-
-NATS Core is intentionally used here as a transient notification channel. A
-message published while a pod is disconnected is not replayed; after an SSE
-reconnect the client receives the current state through the normal read path.
-If durable replay or guaranteed delivery becomes a business requirement, this
-design should be replaced or extended with JetStream and an explicit replay
-contract.
 
 ## HTTP endpoints
 
@@ -181,7 +150,7 @@ reconnect, the client should load the current resource through the normal
 authorized read API. The selected-ids endpoint is a notification subscription
 and does not send an initial collection snapshot.
 
-Without the `nats` profile, the Spring transport remains process-local and is
-appropriate only for a single application instance. The `stream` module does
-not depend directly on the NATS client; NATS is an implementation of the
-transport in `lib:event:core`.
+The current `lib:event` Spring transport is process-local. The stream module
+therefore delivers events only to subscribers connected to the same application
+instance. A multi-instance deployment requires a distributed event transport
+decision outside this read-only stream module.

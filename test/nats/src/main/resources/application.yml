@@ -1,7 +1,0 @@
-ravcube:
-  nats:
-    subject-prefix: event-core-test
-  testcontainers:
-    nats:
-      enabled: false
-      image: nats:2.12-alpine

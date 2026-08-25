@@ -4,8 +4,7 @@ public enum EventSource {
     SPRING_AFTER_COMMIT("", ""),
     SPRING_AFTER_ROLLBACK("", ""),
     KAFKA_AFTER_COMMIT("", ".commit"),
-    KAFKA_AFTER_ROLLBACK("", ".rollback"),
-    NATS_BROADCAST("", "");
+    KAFKA_AFTER_ROLLBACK("", ".rollback");
 
     private final String prefix;
     private final String suffix;

@@ -7,8 +7,8 @@ lib:event:api
 lib:event:core
 ```
 
-The event library provides typed domain events and Spring, NATS, and Kafka
-infrastructure for publishing and listening.
+The event library provides typed domain events and Spring/Kafka infrastructure
+for publishing and listening.
 
 ## Responsibility
 
@@ -66,7 +66,6 @@ belongs to a failed transaction path.
 | `SPRING_AFTER_ROLLBACK` | `DefaultRollbackPublisher`, `DefaultRollbackListener` | In-process after transaction rollback. |
 | `KAFKA_AFTER_COMMIT` | `DefaultKafkaPublisher`, `DefaultKafkaCommitListener` | Kafka topic `<topic>.commit`. |
 | `KAFKA_AFTER_ROLLBACK` | `DefaultKafkaRollbackPublisher`, `DefaultKafkaRollbackListener` | Kafka topic `<topic>.rollback`. |
-| `NATS_BROADCAST` | `DefaultNatsPublisher`, `DefaultNatsCommitListener` | Broadcast to every active pod on `<subject-prefix>.<topic>`. |
 
 Kafka records use `DomainEvent.getKey()` as the record key. The default key is
 an empty string, so domain events that need partitioning or ordering should
@@ -92,31 +91,6 @@ Kafka listener, producer, and consumer settings. Important defaults:
 | `ravcube.kafka.consumer.group-id` | `event-core-kafka` |
 | `ravcube.kafka.consumer.auto-offset-reset` | `latest` |
 | `ravcube.kafka.consumer.trusted-packages` | `*` |
-
-## NATS configuration
-
-Enable NATS transport with the `nats` Spring profile:
-
-```yaml
-spring:
-  profiles:
-    active: nats
-
-ravcube:
-  nats:
-    url: nats://nats:4222
-    subject-prefix: claims-service
-```
-
-`subject-prefix` is a service namespace. All pods of one service must share it;
-different services should use different values. The NATS adapter subscribes
-without a queue group, so every pod receives the event. It uses the existing
-after-commit publisher boundary and serializes only the typed event contract.
-
-Core NATS is a live broadcast channel: it does not persist messages for later
-replay. Use it for refresh signals where the consumer can read the current state
-again. Use JetStream only when replay or durable delivery is part of the
-business contract.
 
 ## Design warning
 
