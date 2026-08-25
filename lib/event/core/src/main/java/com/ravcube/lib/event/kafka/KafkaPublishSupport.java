@@ -2,6 +2,7 @@ package com.ravcube.lib.event.kafka;
 
 import com.ravcube.lib.event.DomainEvent;
 import com.ravcube.lib.event.enums.EventSource;
+import com.ravcube.lib.logger.Logger;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.springframework.kafka.core.KafkaTemplate;
 
@@ -13,11 +14,21 @@ public final class KafkaPublishSupport<E extends DomainEvent> {
     private final KafkaTemplate<String, E> kafkaTemplate;
     private final EventSource eventSource;
     private final KafkaPublisherHeaders headers;
+    private final Logger logger;
 
     public KafkaPublishSupport(KafkaTemplate<String, E> kafkaTemplate, EventSource source) {
+        this(kafkaTemplate, source, Logger.noop());
+    }
+
+    public KafkaPublishSupport(
+            KafkaTemplate<String, E> kafkaTemplate,
+            EventSource source,
+            Logger logger
+    ) {
         this.kafkaTemplate = Objects.requireNonNull(kafkaTemplate, "kafkaTemplate must not be null");
         this.eventSource = Objects.requireNonNull(source, "source must not be null");
         this.headers = new KafkaPublisherHeaders(eventSource.name().getBytes(StandardCharsets.UTF_8));
+        this.logger = Objects.requireNonNull(logger, "logger must not be null");
     }
 
     public void publish(E event) {
@@ -33,7 +44,18 @@ public final class KafkaPublishSupport<E extends DomainEvent> {
         final ProducerRecord<String, E> record = new ProducerRecord<>(topic, key, payload);
         headers.applyTo(record);
 
-        kafkaTemplate.send(record);
+        kafkaTemplate.send(record).whenComplete((result, failure) -> {
+            if (failure != null) {
+                logger.error(
+                        "Kafka publish failed for topic {} and key {}",
+                        failure,
+                        topic,
+                        key
+                );
+                return;
+            }
+            logger.debug("Kafka event accepted for topic {} and key {}", topic, key);
+        });
     }
 
     private static String requireText(String value, String name) {
