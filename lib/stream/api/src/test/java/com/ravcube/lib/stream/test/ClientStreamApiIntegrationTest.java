@@ -26,17 +26,22 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import static com.ravcube.test.kafka.KafkaTestProfiles.TEST_KAFKA_PROFILE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@ActiveProfiles("stream-test")
+@ActiveProfiles({"stream-test", "kafka", TEST_KAFKA_PROFILE})
 @SpringBootTest(
         classes = ClientStreamApiTestApplication.class,
+        properties = {
+                "ravcube.stream.kafka.service-name=stream-api-test",
+                "ravcube.stream.kafka.instance-id=test-pod"
+        },
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
 )
 class ClientStreamApiIntegrationTest {
 
-    private static final Duration READ_TIMEOUT = Duration.ofSeconds(5);
+    private static final Duration READ_TIMEOUT = Duration.ofSeconds(10);
 
     @LocalServerPort
     private int port;
@@ -56,15 +61,15 @@ class ClientStreamApiIntegrationTest {
     }
 
     @Test
-    void refreshEventReachesSubscribedSseClient() throws Exception {
+    void refreshEventReachesSubscribedSseClientThroughKafka() throws Exception {
         try (SseConnection connection = openStream("/streams/claims?ids=1")) {
             publishRefresh("claims", "1", 42);
 
-            String event = connection.readUntil(""version":42");
+            String event = connection.readUntil("\"version\":42");
 
             assertTrue(event.contains("event:refresh"));
             assertTrue(event.contains(
-                    "data:{"resourceId":"1","version":42}"
+                    "data:{\"resourceId\":\"1\",\"version\":42}"
             ));
         }
     }
