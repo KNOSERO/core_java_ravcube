@@ -22,7 +22,7 @@ public final class ClientStreamController {
     private final ClientStreamService service;
 
     @Autowired
-    public ClientStreamController(ClientStreamService service) {
+    ClientStreamController(ClientStreamService service) {
         this.service = Objects.requireNonNull(service, "service must not be null");
     }
 
