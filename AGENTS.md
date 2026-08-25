@@ -212,3 +212,30 @@ Before finishing a change, verify:
 - Infrastructure details are isolated from domain behavior.
 - Tests are readable and avoid duplicated plumbing.
 - The implementation follows the existing module conventions.
+
+
+## Logging Boundary
+
+- Reusable libraries must depend on lib:logger:api for logging contracts.
+- Concrete logging backends belong in lib:logger:core and must be wired explicitly
+  through configuration.
+- Do not import SLF4J, Logback, or Commons Logging directly into reusable domain,
+  application, Stream, or Event code.
+- Log technical context and failures without business payloads, tokens,
+  authorization headers, or full event objects.
+- A new log statement is part of the public operational behavior: update the
+  relevant library documentation when it changes troubleshooting or production
+  configuration.
+
+## Stream/Event Boundary
+
+- stream:common contains only the public refresh event contract.
+- stream:core owns SSE subscriptions, routing, limits, queues, and notification
+  serialization; these implementation classes are not public library contracts.
+- stream:api exposes the HTTP controller and the event entry point needed by
+  consuming applications. Kafka topic and consumer-group mechanics remain internal.
+- A Stream refresh is a notification containing resource name, resource ID, and
+  source version; it must not carry a business payload.
+- Stream refresh events are service-scoped Kafka events. Every pod of one service
+  uses its own consumer group; other services and other event types must keep
+  their existing routing.
