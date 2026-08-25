@@ -50,8 +50,7 @@ public final class ClientStreamKafkaProperties {
         Objects.requireNonNull(value, name + " must not be null");
         if (value.isBlank() || !KAFKA_NAME.matcher(value).matches()) {
             throw new IllegalArgumentException(
-                    name + " must contain only letters, digits, '.', '_' or '-'
-"
+                    name + " must contain only letters, digits, '.', '_' or '-'\n"
             );
         }
         return value;
