@@ -14,7 +14,12 @@ public class DefaultKafkaPublisher<E extends DomainEvent> extends AbstractCommit
 
     @Override
     protected void on(E event) {
-        Objects.requireNonNull(kafkaPublisher, "kafkaPublisher must not be null").publish(event);
+        Objects.requireNonNull(kafkaPublisher, "kafkaPublisher must not be null")
+                .publish(event, baseTopic(event));
+    }
+
+    protected String baseTopic(E event) {
+        return DomainEvent.getTopic(event.getClass());
     }
 
     @Override
