@@ -27,7 +27,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ActiveProfiles("stream-test")
@@ -59,15 +58,14 @@ class ClientStreamApiIntegrationTest {
     @Test
     void refreshEventReachesSubscribedSseClient() throws Exception {
         try (SseConnection connection = openStream("/streams/claims?ids=1")) {
-            publishRefresh("claims", "1");
+            publishRefresh("claims", "1", 42);
 
-            String event = connection.readUntil("\"resourceId\":\"1\"");
+            String event = connection.readUntil(""version":42");
 
             assertTrue(event.contains("event:refresh"));
             assertTrue(event.contains(
-                    "data:{\"resourceName\":\"claims\",\"resourceId\":\"1\"}"
+                    "data:{"resourceId":"1","version":42}"
             ));
-            assertFalse(event.contains("claim:1"));
         }
     }
 
@@ -84,9 +82,9 @@ class ClientStreamApiIntegrationTest {
         assertEquals(HttpStatus.BAD_REQUEST.value(), response.statusCode());
     }
 
-    private void publishRefresh(String resourceName, String resourceId) {
+    private void publishRefresh(String resourceName, String resourceId, long version) {
         transactionTemplate.executeWithoutResult(status ->
-                eventPublisher.publish(new ClientStreamRefreshEvent(resourceName, resourceId))
+                eventPublisher.publish(new ClientStreamRefreshEvent(resourceName, resourceId, version))
         );
     }
 
