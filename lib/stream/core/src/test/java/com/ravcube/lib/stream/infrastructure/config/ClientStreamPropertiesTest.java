@@ -15,6 +15,7 @@ class ClientStreamPropertiesTest {
         assertEquals(Duration.ofMinutes(30), properties.timeout());
         assertEquals(100, properties.maxIdsPerSubscription());
         assertEquals(1_000, properties.maxSubscriptions());
+        assertEquals(100, properties.maxPendingEventsPerSubscription());
     }
 
     @Test
