@@ -1,6 +1,5 @@
 package com.ravcube.lib.stream.infrastructure.sse;
 
-import com.ravcube.lib.stream.api.ClientStreamAuthorization;
 import com.ravcube.lib.stream.infrastructure.config.ClientStreamProperties;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter.SseEventBuilder;
@@ -20,14 +19,10 @@ public final class ClientStreamRegistryTestSupport {
         return new ClientStreamProperties(Duration.ofMinutes(10));
     }
 
-    public static ClientStreamRegistry registry(
-            ClientStreamAuthorization authorization,
-            RecordingSseEmitter... emitters
-    ) {
+    public static ClientStreamRegistry registry(RecordingSseEmitter... emitters) {
         final Deque<SseEmitter> availableEmitters = new ArrayDeque<>(Arrays.asList(emitters));
         return new ClientStreamRegistry(
                 properties(),
-                authorization,
                 timeout -> availableEmitters.removeFirst()
         );
     }
