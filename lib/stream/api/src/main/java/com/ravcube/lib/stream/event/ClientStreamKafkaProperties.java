@@ -10,17 +10,17 @@ import java.util.regex.Pattern;
 
 @Component
 @Profile("kafka")
-public final class ClientStreamKafkaProperties {
+final class ClientStreamKafkaProperties {
 
     private static final Pattern KAFKA_NAME = Pattern.compile("[a-zA-Z0-9._-]+");
 
     private final String serviceName;
     private final String instanceId;
 
-    public ClientStreamKafkaProperties(
-            @Value("${ravcube.stream.kafka.service-name:${spring.application.name:}}") String serviceName,
-            @Value("${ravcube.stream.kafka.instance-id:}") String configuredInstanceId,
-            @Value("${HOSTNAME:}") String hostname
+    ClientStreamKafkaProperties(
+            @Value("\${ravcube.stream.kafka.service-name:\${spring.application.name:}}") String serviceName,
+            @Value("\${ravcube.stream.kafka.instance-id:}") String configuredInstanceId,
+            @Value("\${HOSTNAME:}") String hostname
     ) {
         this.serviceName = requireKafkaName(serviceName, "service-name");
         this.instanceId = requireKafkaName(
@@ -29,15 +29,15 @@ public final class ClientStreamKafkaProperties {
         );
     }
 
-    public String topic() {
+    String topic() {
         return "stream.resource.refresh." + serviceName;
     }
 
-    public String commitTopic() {
+    String commitTopic() {
         return topic() + ".commit";
     }
 
-    public String consumerGroup() {
+    String consumerGroup() {
         return "stream-refresh." + serviceName + "." + instanceId;
     }
 
@@ -54,7 +54,7 @@ public final class ClientStreamKafkaProperties {
         Objects.requireNonNull(value, name + " must not be null");
         if (value.isBlank() || !KAFKA_NAME.matcher(value).matches()) {
             throw new IllegalArgumentException(
-                    name + " must contain only letters, digits, '.', '_' or '-'\n"
+                    name + " must contain only letters, digits, '.', '_' or '-'"
             );
         }
         return value;
