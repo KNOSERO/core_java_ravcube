@@ -9,6 +9,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class ClientStreamPropertiesTest {
 
     @Test
+    void defaultsMatchStreamProfile() {
+        final ClientStreamProperties properties = new ClientStreamProperties(Duration.ofMinutes(30));
+
+        assertEquals(Duration.ofMinutes(30), properties.timeout());
+        assertEquals(100, properties.maxIdsPerSubscription());
+        assertEquals(1_000, properties.maxSubscriptions());
+    }
+
+    @Test
     void configuredTimeoutIsKept() {
         final ClientStreamProperties properties = new ClientStreamProperties(
                 Duration.ofMinutes(10),
