@@ -133,15 +133,19 @@ Aplikacja nie musi zależeć bezpośrednio od `stream:common` ani
 
 ## Konfiguracja
 
-Profil `kafka` jest wymagany. Nazwę serwisu ustawiasz standardową właściwością
-Spring Boot `spring.application.name`:
+Publiczny moduł `stream:api` zawiera domyślny plik profilu
+`application-stream.yml`. Po aktywowaniu profilu `stream` Spring ładuje z niego
+poniższe wartości:
+
 
 ```yaml
 spring:
   application:
     name: claims-service
   profiles:
-    active: kafka
+    active:
+      - stream
+      - kafka
 
 ravcube:
   stream:
@@ -151,13 +155,27 @@ ravcube:
     max-subscriptions: 1000
 ```
 
+Wartości fallback w komponentach zachowują kompatybilność także wtedy, gdy aplikacja nie aktywuje profilu `stream`, ale zalecane jest jawne aktywowanie profilu dla używanego modułu.
+
 Biblioteka automatycznie:
 
 - użyje `spring.application.name` jako `service-name`;
 - użyje Kubernetesowego `HOSTNAME` jako `instance-id`;
 - zbuduje topic i grupę konsumencką bez konfiguracji per pod.
 
-Własne wartości można ustawić tylko wtedy, gdy aplikacja potrzebuje nadpisania:
+Własne wartości można ustawić w konfiguracji aplikacji. Konfiguracja aplikacji
+ma pierwszeństwo przed wartościami dostarczonymi przez bibliotekę:
+
+```yaml
+ravcube:
+  stream:
+    path: /custom-streams
+    timeout: PT10M
+    max-ids-per-subscription: 50
+    max-subscriptions: 500
+```
+
+Niezależnie można nadpisać konfigurację Kafka:
 
 ```yaml
 ravcube:
