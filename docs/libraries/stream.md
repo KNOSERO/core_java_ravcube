@@ -1,12 +1,11 @@
 # Stream
 
-Stream udostępnia klientowi odczytowy kanał SSE. Klient subskrybuje jeden albo
-wiele identyfikatorów zasobu, a po zmianie otrzymuje tylko aktualizację
-pasującego zasobu.
+Stream udostępnia klientowi odczytowy kanał SSE. Jest to lekki informator o
+zmianie zasobu, a nie kanał przesyłający obiekty biznesowe.
 
-Biblioteka nie aktualizuje danych biznesowych. Zmiana jest zgłaszana przez
-event, a Stream pobiera aktualny stan zasobu i wysyła go do właściwych
-subskrybentów.
+Klient subskrybuje jeden albo wiele identyfikatorów. Po zmianie otrzymuje
+`resourceName` i `resourceId`, a następnie pobiera aktualny obiekt przez
+zwykłe, autoryzowane API REST.
 
 ## Instalacja
 
@@ -23,38 +22,13 @@ Aplikacja nie musi zależeć bezpośrednio od `stream:common` ani
 
 ## Pierwsze użycie
 
-Do uruchomienia Stream aplikacja dostarcza:
+Aplikacja dostarcza:
 
-1. reader zasobu;
-2. autoryzację odczytu;
-3. publikację `ClientStreamRefreshEvent` po udanej zmianie biznesowej.
+1. autoryzację odczytu zasobu;
+2. publikację `ClientStreamRefreshEvent` po udanej zmianie biznesowej;
+3. zwykły endpoint REST, z którego klient pobierze aktualny obiekt.
 
-### 1. Reader zasobu
-
-Reader mówi bibliotece, jak pobrać aktualny zasób po jego nazwie i ID:
-
-```java
-@Component
-final class ClaimStreamReader implements ClientStreamResourceReader<ClaimDto> {
-
-    @Override
-    public String resourceName() {
-        return "claims";
-    }
-
-    @Override
-    public ClaimDto resource(String resourceId) {
-        return claimQuery.findById(resourceId).orElse(null);
-    }
-}
-```
-
-`resourceName` musi być unikalne w aplikacji. Reader zwraca aktualny stan
-zasobu, a nie event ani obiekt SSE.
-
-### 2. Autoryzacja
-
-Aplikacja decyduje, czy bieżący użytkownik może czytać konkretny zasób:
+### Autoryzacja
 
 ```java
 @Bean
@@ -64,10 +38,34 @@ ClientStreamAuthorization streamAuthorization(ClaimAccess claimAccess) {
 }
 ```
 
-Autoryzacja jest sprawdzana przy tworzeniu subskrypcji oraz przed wysłaniem
-refreshu.
+### Subskrypcja i odczyt
 
-### 3. Subskrypcja klienta
+```javascript
+const stream = new EventSource("/streams/claims?ids=123&ids=456");
+
+stream.addEventListener("refresh", async event => {
+    const notification = JSON.parse(event.data);
+    const response = await fetch("/claims/" + notification.resourceId);
+
+    if (response.status === 404) {
+        removeClaim(notification.resourceId);
+        return;
+    }
+
+    renderClaim(await response.json());
+});
+```
+
+Stream nie zna ścieżki REST aplikacji. Odpowiada wyłącznie za subskrypcję i
+powiadomienie o zmianie.
+
+## Jak działa subskrypcja
+
+Subskrypcja określa:
+
+- nazwę zasobu;
+- zbiór identyfikatorów;
+- połączenie SSE klienta.
 
 Jeden zasób:
 
@@ -83,46 +81,8 @@ GET /streams/claims?ids=123&ids=456
 Accept: text/event-stream
 ```
 
-W przeglądarce klient może użyć `EventSource`:
-
-```javascript
-const stream = new EventSource("/streams/claims/123");
-
-stream.addEventListener("refresh", event => {
-    const claim = JSON.parse(event.data);
-    renderClaim(claim);
-});
-```
-
-## Jak działa subskrypcja
-
-Subskrypcja określa:
-
-- nazwę zasobu;
-- zbiór identyfikatorów;
-- połączenie SSE klienta.
-
-### Jeden ID
-
-`GET /streams/{resourceName}/{resourceId}`:
-
-- sprawdza autoryzację;
-- rejestruje połączenie;
-- pobiera aktualny zasób;
-- wysyła początkowy event `refresh`, jeśli reader zwróci dane;
-- czeka na kolejne zmiany.
-
-### Wiele ID
-
-`GET /streams/{resourceName}?ids=id1&ids=id2`:
-
-- sprawdza autoryzację dla każdego ID;
-- rejestruje jedną subskrypcję z wybranymi ID;
-- nie wysyła początkowego snapshotu kolekcji;
-- czeka na eventy dotyczące wybranych ID.
-
-Przykład: subskrypcja `123,456` otrzyma refresh dla `123`, ale nie otrzyma
-refreshu dla `789`.
+Oba warianty mają ten sam format eventu. Stream nie wysyła initial snapshotu.
+Klient powinien pobrać stan początkowy przez REST.
 
 Puste ID, brak parametru `ids`, brak uprawnień albo przekroczenie limitu
 subskrypcji kończy się błędem HTTP. Domyślne limity to 100 ID w jednej
@@ -130,7 +90,8 @@ subskrypcji i 1000 aktywnych subskrypcji.
 
 ## Jak działa refresh
 
-Po udanej zmianie biznesowej aplikacja publikuje event:
+Po udanej zmianie biznesowej aplikacja publikuje event przez istniejący moduł
+`lib:event`:
 
 ```java
 eventPublisher.publish(
@@ -138,48 +99,46 @@ eventPublisher.publish(
 );
 ```
 
-Event zawiera tylko:
+`ClientStreamRefreshEvent` zawiera tylko:
 
 - `resourceName`;
 - `resourceId`.
 
-Nie zawiera payloadu zasobu. Dzięki temu event pozostaje małym sygnałem
-„zasób się zmienił”, a aktualny stan jest pobierany dopiero po zakończeniu
-transakcji.
+Nie zawiera payloadu zasobu. Po odebraniu eventu po commitcie biblioteka:
 
-Po odebraniu eventu biblioteka:
+1. przekazuje sygnał do rejestru SSE;
+2. sprawdza, czy identyfikator pasuje do subskrypcji;
+3. sprawdza autoryzację;
+4. wysyła klientowi lekkie powiadomienie.
 
-1. odbiera event po commitcie transakcji;
-2. wyszukuje reader dla `resourceName`;
-3. pobiera aktualny zasób po `resourceId`;
-4. ponownie sprawdza autoryzację;
-5. wysyła event tylko do subskrypcji zawierających to ID.
-
-Event SSE ma nazwę `refresh`:
+SSE ma zawsze jeden format:
 
 ```text
 event: refresh
-data: <serialized resource payload>
+data: {"resourceName":"claims","resourceId":"123"}
 ```
+
+Aktualny obiekt jest pobierany dopiero przez REST klienta.
 
 ## Ogólny przepływ
 
 ```mermaid
 sequenceDiagram
+  participant Client as Klient
+  participant SSE as Stream SSE
   participant App as Aplikacja
   participant Event as lib:event
-  participant Listener as Stream event listener
-  participant Service as Stream service
-  participant Client as Klient SSE
+  participant Listener as Stream listener
+  participant API as REST API
 
-  Client->>Service: subskrypcja resourceName + ID
-  Service-->>Client: połączenie SSE
+  Client->>SSE: subskrypcja resourceName + ID
+  Client->>API: GET aktualnego zasobu
   App->>Event: ClientStreamRefreshEvent(resourceName, resourceId)
   Event-->>Listener: event po commitcie
-  Listener->>Service: refresh(resourceName, resourceId)
-  Service->>Service: pobierz aktualny zasób
-  Service->>Service: sprawdź autoryzację
-  Service-->>Client: refresh tylko dla pasującego ID
+  Listener->>SSE: refresh(resourceName, resourceId)
+  SSE-->>Client: notification resourceName + resourceId
+  Client->>API: GET aktualnego zasobu
+  API-->>Client: aktualny obiekt
 ```
 
 ## Konfiguracja
