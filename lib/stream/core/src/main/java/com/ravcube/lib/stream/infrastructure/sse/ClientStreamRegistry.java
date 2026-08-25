@@ -1,6 +1,7 @@
 package com.ravcube.lib.stream.infrastructure.sse;
 
 import com.ravcube.lib.stream.api.ClientStreamAuthorization;
+import com.ravcube.lib.stream.api.ClientStreamRefreshNotification;
 import com.ravcube.lib.stream.application.ClientStreamAccessDeniedException;
 import com.ravcube.lib.stream.application.ClientStreamLimitExceededException;
 import com.ravcube.lib.stream.domain.ClientStreamSubscription;
@@ -11,10 +12,8 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Objects;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.LongFunction;
 import java.util.function.Predicate;
@@ -62,25 +61,33 @@ public final class ClientStreamRegistry {
 
     public SseEmitter subscribe(String resourceName, Collection<String> resourceIds) {
         final String validatedResourceName = requireText(resourceName, "resourceName");
-        final Set<String> normalizedIds = normalizeIds(resourceIds, maxIdsPerSubscription);
-        for (String resourceId : normalizedIds) {
+        final Set<String> validatedIds = validateIds(resourceIds, maxIdsPerSubscription);
+        final ClientStreamSubscription subscription = new ClientStreamSubscription(
+                validatedResourceName,
+                validatedIds
+        );
+
+        for (String resourceId : subscription.getResourceIds()) {
             assertAuthorized(validatedResourceName, resourceId);
         }
 
-        return register(new ClientStreamSubscription(validatedResourceName, normalizedIds));
+        return register(subscription);
     }
 
-    public void publish(String resourceName, String resourceId, Object payload) {
-        final String validatedResourceName = requireText(resourceName, "resourceName");
-        final String validatedResourceId = requireText(resourceId, "resourceId");
+    public void publish(String resourceName, String resourceId) {
+        final ClientStreamRefreshNotification notification =
+                new ClientStreamRefreshNotification(resourceName, resourceId);
 
-        if (!isAuthorized(validatedResourceName, validatedResourceId)) {
+        if (!isAuthorized(notification.resourceName(), notification.resourceId())) {
             return;
         }
 
         publish(
-                subscription -> subscription.accepts(validatedResourceName, validatedResourceId),
-                payload
+                subscription -> subscription.accepts(
+                        notification.resourceName(),
+                        notification.resourceId()
+                ),
+                notification
         );
     }
 
@@ -90,31 +97,6 @@ public final class ClientStreamRegistry {
         if (!isAuthorized(validatedResourceName, validatedResourceId)) {
             throw new ClientStreamAccessDeniedException(validatedResourceName, validatedResourceId);
         }
-    }
-
-    public void sendInitial(
-            SseEmitter emitter,
-            String resourceName,
-            String resourceId,
-            Object payload
-    ) {
-        final SseEmitter validatedEmitter = Objects.requireNonNull(
-                emitter,
-                "emitter must not be null"
-        );
-        final RegisteredSubscription subscription = subscriptions.stream()
-                .filter(candidate -> candidate.emitter() == validatedEmitter)
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("emitter is not registered"));
-
-        final String validatedResourceName = requireText(resourceName, "resourceName");
-        final String validatedResourceId = requireText(resourceId, "resourceId");
-        if (!subscription.accepts(validatedResourceName, validatedResourceId)
-                || !isAuthorized(validatedResourceName, validatedResourceId)) {
-            throw new ClientStreamAccessDeniedException(validatedResourceName, validatedResourceId);
-        }
-
-        send(validatedEmitter, Objects.requireNonNull(payload, "payload must not be null"));
     }
 
     private SseEmitter register(ClientStreamSubscription subscription) {
@@ -142,21 +124,26 @@ public final class ClientStreamRegistry {
         return emitter;
     }
 
-    private void publish(Predicate<RegisteredSubscription> selector, Object payload) {
-        Objects.requireNonNull(payload, "payload must not be null");
+    private void publish(
+            Predicate<RegisteredSubscription> selector,
+            ClientStreamRefreshNotification notification
+    ) {
         subscriptions.stream()
                 .filter(selector)
-                .forEach(subscription -> send(subscription.emitter(), payload));
+                .forEach(subscription -> send(subscription.emitter(), notification));
     }
 
     private boolean isAuthorized(String resourceName, String resourceId) {
         return authorization.canRead(resourceName, resourceId);
     }
 
-    private void send(SseEmitter emitter, Object payload) {
+    private void send(
+            SseEmitter emitter,
+            ClientStreamRefreshNotification notification
+    ) {
         try {
             synchronized (emitter) {
-                emitter.send(SseEmitter.event().name(REFRESH_EVENT).data(payload));
+                emitter.send(SseEmitter.event().name(REFRESH_EVENT).data(notification));
             }
         } catch (IOException | IllegalStateException exception) {
             remove(emitter);
@@ -176,7 +163,7 @@ public final class ClientStreamRegistry {
         return subscriptions.size();
     }
 
-    private static Set<String> normalizeIds(
+    private static Set<String> validateIds(
             Collection<String> resourceIds,
             int maxIdsPerSubscription
     ) {
@@ -188,16 +175,11 @@ public final class ClientStreamRegistry {
             );
         }
 
-        final TreeSet<String> normalizedIds = new TreeSet<>();
-        for (String resourceId : resourceIds) {
-            normalizedIds.add(requireText(resourceId, "resourceId"));
-        }
-
-        if (normalizedIds.isEmpty()) {
+        if (resourceIds.isEmpty()) {
             throw new IllegalArgumentException("resourceIds must not be empty");
         }
 
-        return Collections.unmodifiableSet(normalizedIds);
+        return Set.copyOf(resourceIds);
     }
 
     private static String requireText(String value, String name) {
