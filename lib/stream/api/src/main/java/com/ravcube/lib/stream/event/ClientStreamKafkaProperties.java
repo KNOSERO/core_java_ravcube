@@ -30,7 +30,11 @@ public final class ClientStreamKafkaProperties {
     }
 
     public String topic() {
-        return "stream.resource.refresh." + serviceName + ".commit";
+        return "stream.resource.refresh." + serviceName;
+    }
+
+    public String commitTopic() {
+        return topic() + ".commit";
     }
 
     public String consumerGroup() {
