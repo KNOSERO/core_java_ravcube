@@ -1,13 +1,11 @@
 package com.ravcube.lib.stream.infrastructure.sse;
 
-import com.ravcube.lib.stream.application.ClientStreamAccessDeniedException;
 import com.ravcube.lib.stream.application.ClientStreamLimitExceededException;
 import com.ravcube.lib.stream.infrastructure.config.ClientStreamProperties;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.ravcube.lib.stream.infrastructure.sse.ClientStreamRegistryTestSupport.RecordingSseEmitter;
 import static com.ravcube.lib.stream.infrastructure.sse.ClientStreamRegistryTestSupport.registry;
@@ -19,10 +17,10 @@ class ClientStreamRegistryTest {
     @Test
     void subscriberReceivesUpdateForSubscribedId() {
         final RecordingSseEmitter subscriber = new RecordingSseEmitter();
-        final ClientStreamRegistry registry = registry((resourceName, resourceId) -> true, subscriber);
+        final ClientStreamRegistry registry = registry(subscriber);
 
         registry.subscribe("claims", List.of("1"));
-        registry.publish("claims", "1");
+        registry.publish("claims", "1", 42);
 
         assertEquals(1, subscriber.eventCount());
     }
@@ -30,10 +28,10 @@ class ClientStreamRegistryTest {
     @Test
     void subscriberReceivesNothingForAnotherId() {
         final RecordingSseEmitter subscriber = new RecordingSseEmitter();
-        final ClientStreamRegistry registry = registry((resourceName, resourceId) -> true, subscriber);
+        final ClientStreamRegistry registry = registry(subscriber);
 
         registry.subscribe("claims", List.of("1"));
-        registry.publish("claims", "2");
+        registry.publish("claims", "2", 42);
 
         assertEquals(0, subscriber.eventCount());
     }
@@ -43,17 +41,12 @@ class ClientStreamRegistryTest {
         final RecordingSseEmitter first = new RecordingSseEmitter();
         final RecordingSseEmitter firstAndSecond = new RecordingSseEmitter();
         final RecordingSseEmitter second = new RecordingSseEmitter();
-        final ClientStreamRegistry registry = registry(
-                (resourceName, resourceId) -> true,
-                first,
-                firstAndSecond,
-                second
-        );
+        final ClientStreamRegistry registry = registry(first, firstAndSecond, second);
 
         registry.subscribe("claims", List.of("1"));
         registry.subscribe("claims", List.of("1", "2"));
         registry.subscribe("claims", List.of("2"));
-        registry.publish("claims", "1");
+        registry.publish("claims", "1", 42);
 
         assertEquals(1, first.eventCount());
         assertEquals(1, firstAndSecond.eventCount());
@@ -62,44 +55,12 @@ class ClientStreamRegistryTest {
 
     @Test
     void subscriptionRequiresAnId() {
-        final ClientStreamRegistry registry = registry(
-                (resourceName, resourceId) -> true,
-                new RecordingSseEmitter()
-        );
+        final ClientStreamRegistry registry = registry(new RecordingSseEmitter());
 
         assertThrows(
                 IllegalArgumentException.class,
                 () -> registry.subscribe("claims", List.of())
         );
-    }
-
-    @Test
-    void unauthorizedSubscriptionIsRejected() {
-        final ClientStreamRegistry registry = registry(
-                (resourceName, resourceId) -> !resourceId.equals("2"),
-                new RecordingSseEmitter()
-        );
-
-        assertThrows(
-                ClientStreamAccessDeniedException.class,
-                () -> registry.subscribe("claims", List.of("1", "2"))
-        );
-    }
-
-    @Test
-    void revokedAccessStopsUpdates() {
-        final RecordingSseEmitter subscriber = new RecordingSseEmitter();
-        final AtomicBoolean allowed = new AtomicBoolean(true);
-        final ClientStreamRegistry registry = registry(
-                (resourceName, resourceId) -> allowed.get(),
-                subscriber
-        );
-
-        registry.subscribe("claims", List.of("1"));
-        allowed.set(false);
-        registry.publish("claims", "1");
-
-        assertEquals(0, subscriber.eventCount());
     }
 
     @Test
@@ -111,7 +72,6 @@ class ClientStreamRegistryTest {
         );
         final ClientStreamRegistry registry = new ClientStreamRegistry(
                 properties,
-                (resourceName, resourceId) -> true,
                 timeout -> new RecordingSseEmitter()
         );
 
