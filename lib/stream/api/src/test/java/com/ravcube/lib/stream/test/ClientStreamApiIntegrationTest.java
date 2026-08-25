@@ -27,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ActiveProfiles("stream-test")
@@ -60,10 +61,13 @@ class ClientStreamApiIntegrationTest {
         try (SseConnection connection = openStream("/streams/claims?ids=1")) {
             publishRefresh("claims", "1");
 
-            String event = connection.readUntil("data:claim:1");
+            String event = connection.readUntil("\"resourceId\":\"1\"");
 
             assertTrue(event.contains("event:refresh"));
-            assertTrue(event.contains("data:claim:1"));
+            assertTrue(event.contains(
+                    "data:{\"resourceName\":\"claims\",\"resourceId\":\"1\"}"
+            ));
+            assertFalse(event.contains("claim:1"));
         }
     }
 
