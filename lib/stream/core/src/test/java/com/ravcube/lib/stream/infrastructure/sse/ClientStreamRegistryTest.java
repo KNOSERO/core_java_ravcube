@@ -1,6 +1,6 @@
 package com.ravcube.lib.stream.infrastructure.sse;
 
-import com.ravcube.lib.stream.api.ClientStreamAccessDeniedException;
+import com.ravcube.lib.stream.application.ClientStreamAccessDeniedException;
 import com.ravcube.lib.stream.application.ClientStreamLimitExceededException;
 import com.ravcube.lib.stream.infrastructure.config.ClientStreamProperties;
 import org.junit.jupiter.api.Test;
@@ -29,7 +29,7 @@ class ClientStreamRegistryTest {
         );
         final ClientStreamRegistry registry = new ClientStreamRegistry(
                 properties,
-                (resourceName, resourceIds) -> resourceId -> true,
+                (resourceName, resourceId) -> true,
                 timeout -> emitters.removeFirst()
         );
 
@@ -49,7 +49,7 @@ class ClientStreamRegistryTest {
         final ClientStreamProperties properties = new ClientStreamProperties(Duration.ofMinutes(10));
         final ClientStreamRegistry registry = new ClientStreamRegistry(
                 properties,
-                (resourceName, resourceIds) -> resourceId -> true,
+                (resourceName, resourceId) -> true,
                 timeout -> new RecordingEmitter()
         );
 
@@ -64,7 +64,7 @@ class ClientStreamRegistryTest {
         final ClientStreamProperties properties = new ClientStreamProperties(Duration.ofMinutes(10));
         final ClientStreamRegistry registry = new ClientStreamRegistry(
                 properties,
-                (resourceName, resourceIds) -> resourceId -> !resourceId.equals("2"),
+                (resourceName, resourceId) -> !resourceId.equals("2"),
                 timeout -> new RecordingEmitter()
         );
 
@@ -81,7 +81,7 @@ class ClientStreamRegistryTest {
         final boolean[] allowed = {true};
         final ClientStreamRegistry registry = new ClientStreamRegistry(
                 properties,
-                (resourceName, resourceIds) -> resourceId -> allowed[0],
+                (resourceName, resourceId) -> allowed[0],
                 timeout -> emitter
         );
 
@@ -93,21 +93,6 @@ class ClientStreamRegistryTest {
     }
 
     @Test
-    void shouldRejectUnauthorizedResourceUpdate() {
-        final ClientStreamProperties properties = new ClientStreamProperties(Duration.ofMinutes(10));
-        final ClientStreamRegistry registry = new ClientStreamRegistry(
-                properties,
-                (resourceName, resourceIds) -> resourceId -> false,
-                timeout -> new RecordingEmitter()
-        );
-
-        assertThrows(
-                ClientStreamAccessDeniedException.class,
-                () -> registry.assertAuthorized("claims", "1")
-        );
-    }
-
-    @Test
     void shouldEnforceSubscriptionLimits() {
         final ClientStreamProperties properties = new ClientStreamProperties(
                 Duration.ofMinutes(10),
@@ -116,7 +101,7 @@ class ClientStreamRegistryTest {
         );
         final ClientStreamRegistry registry = new ClientStreamRegistry(
                 properties,
-                (resourceName, resourceIds) -> resourceId -> true,
+                (resourceName, resourceId) -> true,
                 timeout -> new RecordingEmitter()
         );
 

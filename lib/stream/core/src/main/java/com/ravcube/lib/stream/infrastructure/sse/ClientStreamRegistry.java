@@ -1,8 +1,7 @@
 package com.ravcube.lib.stream.infrastructure.sse;
 
-import com.ravcube.lib.stream.api.ClientStreamAccess;
-import com.ravcube.lib.stream.api.ClientStreamAccessDeniedException;
-import com.ravcube.lib.stream.api.ClientStreamAuthorizer;
+import com.ravcube.lib.stream.api.ClientStreamAuthorization;
+import com.ravcube.lib.stream.application.ClientStreamAccessDeniedException;
 import com.ravcube.lib.stream.application.ClientStreamLimitExceededException;
 import com.ravcube.lib.stream.domain.ClientStreamSubscription;
 import com.ravcube.lib.stream.infrastructure.config.ClientStreamProperties;
@@ -13,7 +12,6 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
@@ -29,20 +27,20 @@ public final class ClientStreamRegistry {
     private final Duration timeout;
     private final int maxIdsPerSubscription;
     private final int maxSubscriptions;
-    private final ClientStreamAuthorizer authorizer;
+    private final ClientStreamAuthorization authorization;
     private final LongFunction<SseEmitter> emitterFactory;
     private final CopyOnWriteArrayList<RegisteredSubscription> subscriptions = new CopyOnWriteArrayList<>();
 
     public ClientStreamRegistry(
             ClientStreamProperties properties,
-            ClientStreamAuthorizer authorizer
+            ClientStreamAuthorization authorization
     ) {
-        this(properties, authorizer, timeout -> new SseEmitter(timeout));
+        this(properties, authorization, timeout -> new SseEmitter(timeout));
     }
 
     ClientStreamRegistry(
             ClientStreamProperties properties,
-            ClientStreamAuthorizer authorizer,
+            ClientStreamAuthorization authorization,
             LongFunction<SseEmitter> emitterFactory
     ) {
         final ClientStreamProperties validatedProperties = Objects.requireNonNull(
@@ -52,7 +50,10 @@ public final class ClientStreamRegistry {
         this.timeout = validatedProperties.timeout();
         this.maxIdsPerSubscription = validatedProperties.maxIdsPerSubscription();
         this.maxSubscriptions = validatedProperties.maxSubscriptions();
-        this.authorizer = Objects.requireNonNull(authorizer, "authorizer must not be null");
+        this.authorization = Objects.requireNonNull(
+                authorization,
+                "authorization must not be null"
+        );
         this.emitterFactory = Objects.requireNonNull(
                 emitterFactory,
                 "emitterFactory must not be null"
@@ -62,21 +63,20 @@ public final class ClientStreamRegistry {
     public SseEmitter subscribe(String resourceName, Collection<String> resourceIds) {
         final String validatedResourceName = requireText(resourceName, "resourceName");
         final Set<String> normalizedIds = normalizeIds(resourceIds, maxIdsPerSubscription);
-        final ClientStreamAccess access = Objects.requireNonNull(
-                authorizer.authorize(validatedResourceName, normalizedIds),
-                "authorizer returned null access"
-        );
-
-        if (normalizedIds.stream().anyMatch(resourceId -> !access.allows(resourceId))) {
-            throw new ClientStreamAccessDeniedException(validatedResourceName);
+        for (String resourceId : normalizedIds) {
+            assertAuthorized(validatedResourceName, resourceId);
         }
 
-        return register(new ClientStreamSubscription(validatedResourceName, normalizedIds, access));
+        return register(new ClientStreamSubscription(validatedResourceName, normalizedIds));
     }
 
     public void publish(String resourceName, String resourceId, Object payload) {
         final String validatedResourceName = requireText(resourceName, "resourceName");
         final String validatedResourceId = requireText(resourceId, "resourceId");
+
+        if (!isAuthorized(validatedResourceName, validatedResourceId)) {
+            return;
+        }
 
         publish(
                 subscription -> subscription.accepts(validatedResourceName, validatedResourceId),
@@ -84,16 +84,11 @@ public final class ClientStreamRegistry {
         );
     }
 
-    public void assertAuthorized(String resourceName, String resourceId) {
+    private void assertAuthorized(String resourceName, String resourceId) {
         final String validatedResourceName = requireText(resourceName, "resourceName");
-        final Set<String> normalizedIds = normalizeIds(List.of(resourceId), maxIdsPerSubscription);
-        final String validatedResourceId = normalizedIds.iterator().next();
-        final ClientStreamAccess access = Objects.requireNonNull(
-                authorizer.authorize(validatedResourceName, normalizedIds),
-                "authorizer returned null access"
-        );
-        if (!access.allows(validatedResourceId)) {
-            throw new ClientStreamAccessDeniedException(validatedResourceName);
+        final String validatedResourceId = requireText(resourceId, "resourceId");
+        if (!isAuthorized(validatedResourceName, validatedResourceId)) {
+            throw new ClientStreamAccessDeniedException(validatedResourceName, validatedResourceId);
         }
     }
 
@@ -112,11 +107,11 @@ public final class ClientStreamRegistry {
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("emitter is not registered"));
 
-        if (!subscription.accepts(
-                requireText(resourceName, "resourceName"),
-                requireText(resourceId, "resourceId")
-        )) {
-            throw new ClientStreamAccessDeniedException(resourceName);
+        final String validatedResourceName = requireText(resourceName, "resourceName");
+        final String validatedResourceId = requireText(resourceId, "resourceId");
+        if (!subscription.accepts(validatedResourceName, validatedResourceId)
+                || !isAuthorized(validatedResourceName, validatedResourceId)) {
+            throw new ClientStreamAccessDeniedException(validatedResourceName, validatedResourceId);
         }
 
         send(validatedEmitter, Objects.requireNonNull(payload, "payload must not be null"));
@@ -152,6 +147,10 @@ public final class ClientStreamRegistry {
         subscriptions.stream()
                 .filter(selector)
                 .forEach(subscription -> send(subscription.emitter(), payload));
+    }
+
+    private boolean isAuthorized(String resourceName, String resourceId) {
+        return authorization.canRead(resourceName, resourceId);
     }
 
     private void send(SseEmitter emitter, Object payload) {

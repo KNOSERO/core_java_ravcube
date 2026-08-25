@@ -1,6 +1,6 @@
 package com.ravcube.lib.stream.application;
 
-import com.ravcube.lib.stream.api.ClientRestResourceStream;
+import com.ravcube.lib.stream.api.ClientStreamResourceReader;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -12,22 +12,22 @@ import java.util.Optional;
 @Component
 public final class ClientStreamResourceCatalog {
 
-    private final Map<String, ClientRestResourceStream<?>> resourceStreams;
+    private final Map<String, ClientStreamResourceReader<?>> resourceStreams;
 
-    public ClientStreamResourceCatalog(List<ClientRestResourceStream<?>> resourceStreams) {
+    public ClientStreamResourceCatalog(List<ClientStreamResourceReader<?>> resourceStreams) {
         this.resourceStreams = indexResourceStreams(resourceStreams);
     }
 
-    public Optional<ClientRestResourceStream<?>> find(String resourceName) {
+    public Optional<ClientStreamResourceReader<?>> find(String resourceName) {
         return Optional.ofNullable(resourceStreams.get(resourceName));
     }
 
-    private static Map<String, ClientRestResourceStream<?>> indexResourceStreams(
-            List<ClientRestResourceStream<?>> streams
+    private static Map<String, ClientStreamResourceReader<?>> indexResourceStreams(
+            List<ClientStreamResourceReader<?>> streams
     ) {
         Objects.requireNonNull(streams, "resourceStreams must not be null");
-        final Map<String, ClientRestResourceStream<?>> indexed = new HashMap<>();
-        for (ClientRestResourceStream<?> stream : streams) {
+        final Map<String, ClientStreamResourceReader<?>> indexed = new HashMap<>();
+        for (ClientStreamResourceReader<?> stream : streams) {
             Objects.requireNonNull(stream, "resource stream must not be null");
             final String resourceName = Objects.requireNonNull(
                     stream.resourceName(),

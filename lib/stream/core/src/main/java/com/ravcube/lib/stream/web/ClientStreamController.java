@@ -1,18 +1,14 @@
 package com.ravcube.lib.stream.web;
 
-import com.ravcube.lib.stream.api.ClientRestResourceStream;
-import com.ravcube.lib.stream.api.ClientStreamAccessDeniedException;
+import com.ravcube.lib.stream.application.ClientStreamAccessDeniedException;
 import com.ravcube.lib.stream.application.ClientStreamLimitExceededException;
 import com.ravcube.lib.stream.application.ClientStreamResourceCatalog;
-import com.ravcube.lib.stream.application.ClientStreamUpdateService;
 import com.ravcube.lib.stream.infrastructure.sse.ClientStreamRegistry;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -28,31 +24,14 @@ public final class ClientStreamController {
 
     private final ClientStreamRegistry registry;
     private final ClientStreamResourceCatalog resourceCatalog;
-    private final ClientStreamUpdateService updateService;
 
     @Autowired
     public ClientStreamController(
             ClientStreamRegistry registry,
-            ClientStreamResourceCatalog resourceCatalog,
-            ClientStreamUpdateService updateService
+            ClientStreamResourceCatalog resourceCatalog
     ) {
         this.registry = Objects.requireNonNull(registry, "registry must not be null");
         this.resourceCatalog = Objects.requireNonNull(resourceCatalog, "resourceCatalog must not be null");
-        this.updateService = Objects.requireNonNull(updateService, "updateService must not be null");
-    }
-
-    public ClientStreamController(
-            ClientStreamRegistry registry,
-            List<ClientRestResourceStream<?>> resourceStreams
-    ) {
-        this(registry, new ClientStreamResourceCatalog(resourceStreams));
-    }
-
-    private ClientStreamController(
-            ClientStreamRegistry registry,
-            ClientStreamResourceCatalog resourceCatalog
-    ) {
-        this(registry, resourceCatalog, new ClientStreamUpdateService(resourceCatalog));
     }
 
     @GetMapping(value = "/{resourceName}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -106,26 +85,6 @@ public final class ClientStreamController {
             throw exception;
         }
         return emitter;
-    }
-
-    @PostMapping("/updates/{resourceName}/{resourceId}")
-    public ResponseEntity<Void> updateResource(
-            @PathVariable String resourceName,
-            @PathVariable String resourceId
-    ) {
-        try {
-            registry.assertAuthorized(resourceName, resourceId);
-        } catch (ClientStreamAccessDeniedException exception) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, exception.getMessage(), exception);
-        } catch (IllegalArgumentException exception) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage(), exception);
-        }
-
-        if (!updateService.update(resourceName, resourceId)) {
-            return ResponseEntity.notFound().build();
-        }
-
-        return ResponseEntity.noContent().build();
     }
 
 }
