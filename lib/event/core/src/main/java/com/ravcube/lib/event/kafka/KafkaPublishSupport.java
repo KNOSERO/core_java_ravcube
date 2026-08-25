@@ -36,15 +36,34 @@ public final class KafkaPublishSupport<E extends DomainEvent> {
     }
 
     public void publish(E event, String baseTopic) {
+        publish(event, baseTopic, 1);
+    }
+
+    public void publish(E event, String baseTopic, int maxAttempts) {
         final E payload = Objects.requireNonNull(event, "payload must not be null");
         final String validatedBaseTopic = requireText(baseTopic, "baseTopic");
-        final String topic = eventSource.formatTopic(validatedBaseTopic);
-        final String key = Objects.requireNonNull(payload.getKey(), "key must not be null");
+        if (maxAttempts <= 0) {
+            throw new IllegalArgumentException("maxAttempts must be greater than zero");
+        }
+        send(payload, validatedBaseTopic, maxAttempts);
+    }
 
+    private void send(E payload, String baseTopic, int attemptsRemaining) {
+        final String topic = eventSource.formatTopic(baseTopic);
+        final String key = Objects.requireNonNull(payload.getKey(), "key must not be null");
         final ProducerRecord<String, E> record = new ProducerRecord<>(topic, key, payload);
         headers.applyTo(record);
 
         kafkaTemplate.send(record).whenComplete((result, failure) -> {
+            if (failure != null && attemptsRemaining > 1) {
+                logger.warn(
+                        "Kafka publish failed for topic {} and key {}; retrying",
+                        topic,
+                        key
+                );
+                send(payload, baseTopic, attemptsRemaining - 1);
+                return;
+            }
             if (failure != null) {
                 logger.error(
                         "Kafka publish failed for topic {} and key {}",
