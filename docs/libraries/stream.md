@@ -1,7 +1,7 @@
 # Stream
 
-Stream udostępnia klientowi odczytowy kanał SSE. Jest to lekki informator o
-zmianie zasobu, a nie kanał przesyłający obiekty biznesowe.
+Stream udostępnia klientowi odczytowy kanał SSE. Jest lekkim informatorem o
+zmianie zasobu, a nie kanałem przesyłającym obiekty biznesowe.
 
 Klient subskrybuje jeden albo wiele identyfikatorów. Po zmianie otrzymuje
 identyfikator zasobu i jego wersję, a następnie pobiera aktualny obiekt przez
@@ -19,6 +19,29 @@ dependencies {
 
 Aplikacja nie musi zależeć bezpośrednio od `stream:common` ani
 `stream:core`.
+
+## Konfiguracja Kafka
+
+Transport odświeżenia Stream działa przez Kafka. Należy aktywować profil
+`kafka` oraz ustawić stabilną nazwę serwisu:
+
+`yaml
+spring:
+  profiles:
+    active: kafka
+
+ravcube:
+  stream:
+    kafka:
+      service-name: claims-service
+      # Opcjonalne. W Kubernetes powinno być unikalne dla każdego poda.
+      instance-id: pod-1
+`
+
+`service-name` musi być takie samo dla wszystkich podów jednego serwisu i
+różne dla innych serwisów. `instance-id` musi być unikalne dla każdego poda.
+Jeżeli nie zostanie podane, biblioteka użyje wartości środowiskowej `HOSTNAME`,
+a poza środowiskiem z `HOSTNAME` wygeneruje identyfikator losowy.
 
 ## Pierwsze użycie
 
@@ -90,18 +113,38 @@ eventPublisher.publish(
 );
 `
 
-`ClientStreamRefreshEvent` zawiera:
+Event jest obsługiwany dopiero po zakończeniu transakcji. Zawiera:
 
 - `resourceName` — nazwę zasobu używaną do routingu;
 - `resourceId` — identyfikator zmienionego zasobu;
 - `version` — wersję pochodzącą ze źródła prawdy.
 
-Nie zawiera payloadu zasobu. Wersja nie jest generowana przez Stream. Po
-odebraniu eventu po commitcie biblioteka:
+Nie zawiera payloadu zasobu. Wersja nie jest generowana przez Stream.
 
-1. przekazuje sygnał do rejestru SSE;
-2. sprawdza, czy identyfikator pasuje do subskrypcji;
-3. wysyła klientowi lekkie powiadomienie.
+## Izolacja między serwisami i podami
+
+Dla konfiguracji:
+
+`yaml
+ravcube:
+  stream:
+    kafka:
+      service-name: claims-service
+      instance-id: pod-1
+`
+
+biblioteka używa:
+
+- topicu `stream.resource.refresh.claims-service.commit`;
+- grupy konsumenckiej `stream-refresh.claims-service.pod-1`.
+
+Wszystkie pody serwisu używają tego samego topicu, ale każdy pod ma własną
+grupę konsumencką. Dzięki temu każdy pod otrzymuje własną kopię eventu i może
+odświeżyć lokalne połączenia SSE.
+
+Inny serwis, np. z `service-name: payments-service`, używa innego topicu.
+Nie zmieniaj globalnego `spring.kafka.consumer.group-id` w celu konfiguracji
+Stream — zmiana ma dotyczyć wyłącznie właściwości `ravcube.stream.kafka`.
 
 SSE ma jeden format payloadu:
 
@@ -118,22 +161,28 @@ Aktualny obiekt jest pobierany dopiero przez REST klienta.
 sequenceDiagram
   participant Client as Klient
   participant SSE as Stream SSE
-  participant App as Aplikacja
-  participant Event as lib:event
-  participant Listener as Stream listener
   participant API as REST API
+  participant App as Aplikacja
+  participant Kafka as Kafka topic per service
+  participant PodA as Stream listener pod A
+  participant PodB as Stream listener pod B
 
   Client->>SSE: subskrypcja resourceName + ID
-  Client->>API: GET aktualnego zasobu
-  App->>Event: RefreshEvent(resourceName, resourceId, version)
-  Event-->>Listener: event po commitcie
-  Listener->>SSE: refresh(resourceName, resourceId, version)
+  Client->>API: GET stanu początkowego
+  App->>Kafka: RefreshEvent po commitcie
+  Kafka-->>PodA: event w grupie pod-A
+  Kafka-->>PodB: event w grupie pod-B
+  PodA->>SSE: refresh(resourceId, version)
+  PodB->>SSE: refresh(resourceId, version)
   SSE-->>Client: notification resourceId + version
   Client->>API: GET aktualnego zasobu
   API-->>Client: aktualny obiekt
 `
 
-## Konfiguracja
+Każdy pod otrzymuje event, ale Kafka nie jest magazynem stanu Stream. Po
+reconnect klient powinien pobrać aktualny stan przez REST.
+
+## Konfiguracja SSE
 
 Domyślna ścieżka to `/streams`. Można ją zmienić przez
 `ravcube.stream.path`.
@@ -147,10 +196,9 @@ ravcube:
     max-subscriptions: 1000
 `
 
-## Ważne zachowanie
+## Testowanie
+
+Testy core sprawdzają routing SSE bez HTTP i Kafka. Testy API sprawdzają
+prawdziwy przepływ HTTP + Kafka z użyciem modułu `test:kafka` i Testcontainers.
 
 SSE jest kanałem bieżących powiadomień, a nie trwałym magazynem eventów.
-
-Po reconnect klient powinien ponownie pobrać aktualny stan przez zwykłe API.
-Obecny transport `lib:event` działa lokalnie w procesie, dlatego event trafi
-tylko do klientów podłączonych do tej samej instancji aplikacji.
