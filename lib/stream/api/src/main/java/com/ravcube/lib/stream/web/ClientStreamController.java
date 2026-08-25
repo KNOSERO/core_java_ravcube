@@ -1,6 +1,5 @@
 package com.ravcube.lib.stream.web;
 
-import com.ravcube.lib.stream.application.ClientStreamAccessDeniedException;
 import com.ravcube.lib.stream.application.ClientStreamLimitExceededException;
 import com.ravcube.lib.stream.application.ClientStreamService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,8 +34,6 @@ public final class ClientStreamController {
     ) {
         try {
             return service.subscribe(resourceName, resourceIds);
-        } catch (ClientStreamAccessDeniedException exception) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, exception.getMessage(), exception);
         } catch (ClientStreamLimitExceededException exception) {
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, exception.getMessage(), exception);
         } catch (IllegalArgumentException exception) {
@@ -55,10 +52,10 @@ public final class ClientStreamController {
     ) {
         try {
             return service.subscribe(resourceName, resourceId);
-        } catch (ClientStreamAccessDeniedException exception) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, exception.getMessage(), exception);
         } catch (ClientStreamLimitExceededException exception) {
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, exception.getMessage(), exception);
+        } catch (IllegalArgumentException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage(), exception);
         }
     }
 
