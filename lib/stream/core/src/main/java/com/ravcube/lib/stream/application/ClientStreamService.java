@@ -17,20 +17,12 @@ public final class ClientStreamService {
         this.registry = Objects.requireNonNull(registry, "registry must not be null");
     }
 
-    public SseEmitter subscribe(String resourceName, Collection<String> resourceIds) {
-        return registry.subscribe(resourceName, resourceIds);
-    }
-
     public SseEmitter subscribe(
             String resourceName,
             Collection<String> resourceIds,
             String clientKey
     ) {
         return registry.subscribe(resourceName, resourceIds, clientKey);
-    }
-
-    public SseEmitter subscribe(String resourceName, String resourceId) {
-        return subscribe(resourceName, resourceId, "internal");
     }
 
     public SseEmitter subscribe(

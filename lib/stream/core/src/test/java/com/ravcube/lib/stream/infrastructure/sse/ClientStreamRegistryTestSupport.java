@@ -29,7 +29,7 @@ public final class ClientStreamRegistryTestSupport {
 
     public static final class RecordingSseEmitter extends SseEmitter {
 
-        private int eventCount;
+        private volatile int eventCount;
 
         public int eventCount() {
             return eventCount;
