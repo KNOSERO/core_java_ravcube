@@ -1,0 +1,6 @@
+ravcube:
+  nats:
+    subject-prefix: event-core-test
+  testcontainers:
+    nats:
+      enabled: true

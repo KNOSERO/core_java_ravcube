@@ -14,7 +14,7 @@ Use this page to find the module that provides the capability you need.
 | `lib:search:api` | Search-facing contracts. | Code needs search abstractions without depending on Elasticsearch infrastructure. |
 | `lib:search:core` | Elasticsearch search services and query helpers. | A module needs full-text or indexed document search. |
 | `lib:event:api` | Domain event contracts. | A module publishes or consumes typed domain events. |
-| `lib:event:core` | Spring/Kafka event infrastructure. | Events must be routed through Spring or Kafka. |
+| `lib:event:core` | Spring/NATS/Kafka event infrastructure. | Events must be routed through Spring, NATS, or Kafka. |
 | `lib:stream:api` | Client stream abstractions. | A feature exposes resource or collection updates. |
 | `lib:stream:core` | SSE stream implementation. | A Spring service exposes server-sent events. |
 | `lib:security:api` | Shared security context and Keycloak client contract. | Code needs roles, claims, or auth client API. |
@@ -37,6 +37,7 @@ public contract and implementation for their focused capability.
 | `test:awaitility` | Waiting for asynchronous behavior in tests. |
 | `test:redis` | Testing real Redis behavior. |
 | `test:kafka` | Testing real Kafka publishing or listening. |
+| `test:nats` | Testing real NATS broadcast publishing or listening. |
 | `test:postgresql` | Testing real database mappings or queries. |
 | `test:elasticsearch` | Testing real Elasticsearch indexing or queries. |
 | `test:keycloak` | Testing real Keycloak integration. |
