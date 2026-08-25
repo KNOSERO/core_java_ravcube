@@ -12,17 +12,9 @@ import java.util.Objects;
 public final class ClientStreamService {
 
     private final ClientStreamRegistry registry;
-    private final ClientStreamResourceCatalog resourceCatalog;
 
-    public ClientStreamService(
-            ClientStreamRegistry registry,
-            ClientStreamResourceCatalog resourceCatalog
-    ) {
+    public ClientStreamService(ClientStreamRegistry registry) {
         this.registry = Objects.requireNonNull(registry, "registry must not be null");
-        this.resourceCatalog = Objects.requireNonNull(
-                resourceCatalog,
-                "resourceCatalog must not be null"
-        );
     }
 
     public SseEmitter subscribe(String resourceName, Collection<String> resourceIds) {
@@ -30,29 +22,10 @@ public final class ClientStreamService {
     }
 
     public SseEmitter subscribe(String resourceName, String resourceId) {
-        final SseEmitter emitter = registry.subscribe(resourceName, List.of(resourceId));
-        try {
-            resourceCatalog.find(resourceName)
-                    .map(resourceReader -> resourceReader.resource(resourceId))
-                    .filter(Objects::nonNull)
-                    .ifPresent(payload -> registry.sendInitial(
-                            emitter,
-                            resourceName,
-                            resourceId,
-                            payload
-                    ));
-            return emitter;
-        } catch (RuntimeException exception) {
-            registry.unsubscribe(emitter);
-            emitter.completeWithError(exception);
-            throw exception;
-        }
+        return subscribe(resourceName, List.of(resourceId));
     }
 
     public void refresh(String resourceName, String resourceId) {
-        resourceCatalog.find(resourceName)
-                .map(resourceReader -> resourceReader.resource(resourceId))
-                .filter(Objects::nonNull)
-                .ifPresent(payload -> registry.publish(resourceName, resourceId, payload));
+        registry.publish(resourceName, resourceId);
     }
 }
