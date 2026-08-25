@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Objects;
 
 @RestController
-@RequestMapping("\${ravcube.stream.path:/streams}")
+@RequestMapping("${ravcube.stream.path:/streams}")
 public final class ClientStreamController {
 
     private final ClientStreamService service;
