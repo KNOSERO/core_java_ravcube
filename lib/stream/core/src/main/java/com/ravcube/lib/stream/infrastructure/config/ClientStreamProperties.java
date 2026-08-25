@@ -21,10 +21,10 @@ public final class ClientStreamProperties {
 
     @Autowired
     public ClientStreamProperties(
-            @Value("\${ravcube.stream.timeout:PT30M}") Duration timeout,
-            @Value("\${ravcube.stream.max-ids-per-subscription:100}") int maxIdsPerSubscription,
-            @Value("\${ravcube.stream.max-subscriptions:1000}") int maxSubscriptions,
-            @Value("\${ravcube.stream.max-pending-events-per-subscription:100}") int maxPendingEventsPerSubscription
+            @Value("${ravcube.stream.timeout:PT30M}") Duration timeout,
+            @Value("${ravcube.stream.max-ids-per-subscription:100}") int maxIdsPerSubscription,
+            @Value("${ravcube.stream.max-subscriptions:1000}") int maxSubscriptions,
+            @Value("${ravcube.stream.max-pending-events-per-subscription:100}") int maxPendingEventsPerSubscription
     ) {
         this.timeout = validateTimeout(timeout);
         this.maxIdsPerSubscription = validatePositive(
