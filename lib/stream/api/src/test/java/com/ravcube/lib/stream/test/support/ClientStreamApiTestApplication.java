@@ -27,7 +27,6 @@ public class ClientStreamApiTestApplication {
     }
 
     @Bean
-    PlatformTransactionManager transactionManager() {    @Bean
     PlatformTransactionManager transactionManager() {
         return new AbstractPlatformTransactionManager() {
             @Override
