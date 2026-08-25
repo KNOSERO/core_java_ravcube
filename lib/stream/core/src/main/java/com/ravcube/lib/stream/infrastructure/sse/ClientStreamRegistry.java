@@ -271,11 +271,21 @@ public final class ClientStreamRegistry implements DisposableBean {
 
         try {
             subscription.heartbeat = heartbeatScheduler.scheduleAtFixedRate(
-                    () -> sendHeartbeat(subscription),
+                    () -> scheduleHeartbeatSend(subscription),
                     heartbeatInterval.toMillis(),
                     heartbeatInterval.toMillis(),
                     java.util.concurrent.TimeUnit.MILLISECONDS
             );
+        } catch (RejectedExecutionException exception) {
+            metrics.heartbeatFailure();
+            remove(subscription.emitter);
+            subscription.emitter.completeWithError(exception);
+        }
+    }
+
+    private void scheduleHeartbeatSend(RegisteredSubscription subscription) {
+        try {
+            sender.execute(() -> sendHeartbeat(subscription));
         } catch (RejectedExecutionException exception) {
             metrics.heartbeatFailure();
             remove(subscription.emitter);
