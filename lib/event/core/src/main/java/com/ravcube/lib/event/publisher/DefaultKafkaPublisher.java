@@ -19,7 +19,11 @@ public class DefaultKafkaPublisher<E extends DomainEvent> extends AbstractCommit
     }
 
     protected final void publishToKafka(E event, String baseTopic) {
-        kafkaPublisher().publish(event, baseTopic);
+        publishToKafka(event, baseTopic, 1);
+    }
+
+    protected final void publishToKafka(E event, String baseTopic, int maxAttempts) {
+        kafkaPublisher().publish(event, baseTopic, maxAttempts);
     }
 
     protected final KafkaPublishSupport<E> kafkaPublisher() {
