@@ -20,14 +20,15 @@ stream:api -> stream:common (api)
 stream:api -> stream:core (implementation)
 stream:core -> stream:common (implementation)
 stream:common -> lib:event:api
-stream:core -> lib:event:core
+stream:api -> lib:event:core
 ```
 
 `lib:stream:common` contains all shared contracts: external read interfaces and
 the refresh event. `lib:stream:api` is the public facade used by applications:
 it re-exports `common` and brings the `core` implementation at runtime.
-`lib:stream:core` contains only the SSE registry, read handlers, event listener,
-and Spring MVC transport.
+The API module contains the Spring MVC controller and event adapters; they call
+the application service from `lib:stream:core`. The core module contains the
+service, SSE registry, read handlers, and domain rules.
 
 ```text
 lib/stream/common/src/main/java/com/ravcube/lib/stream
@@ -38,13 +39,15 @@ lib/stream/common/src/main/java/com/ravcube/lib/stream
     ClientStreamRefreshEvent.java     # shared event contract
 
 lib/stream/api/build.gradle.kts        # public facade: common + core runtime
+lib/stream/api/src/main/java/com/ravcube/lib/stream
+  web/                                # read-only HTTP/SSE controller
+  event/                              # lib:event adapters using core service
 
 lib/stream/core/src/main/java/com/ravcube/lib/stream
-  application/                         # resource catalog and limits
-  event/                               # lib:event publisher/listener
+  application/                         # service, resource catalog and limits
   infrastructure/config/              # runtime properties
   infrastructure/sse/                  # SseEmitter registry
-  web/                                 # read-only HTTP/SSE endpoints
+  domain/                              # subscription rules
 ```
 
 An external application depends only on the facade:

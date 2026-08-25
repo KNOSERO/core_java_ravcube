@@ -4,7 +4,6 @@ plugins {
 
 dependencies {
     implementation(project(":lib:stream:common"))
-    implementation(project(":lib:event:core"))
     implementation(libs.spring.context)
     implementation(libs.spring.web)
 

@@ -2,8 +2,7 @@ package com.ravcube.lib.stream.web;
 
 import com.ravcube.lib.stream.application.ClientStreamAccessDeniedException;
 import com.ravcube.lib.stream.application.ClientStreamLimitExceededException;
-import com.ravcube.lib.stream.application.ClientStreamResourceCatalog;
-import com.ravcube.lib.stream.infrastructure.sse.ClientStreamRegistry;
+import com.ravcube.lib.stream.application.ClientStreamService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -22,16 +21,11 @@ import java.util.Objects;
 @RequestMapping("${ravcube.stream.path:/streams}")
 public final class ClientStreamController {
 
-    private final ClientStreamRegistry registry;
-    private final ClientStreamResourceCatalog resourceCatalog;
+    private final ClientStreamService service;
 
     @Autowired
-    public ClientStreamController(
-            ClientStreamRegistry registry,
-            ClientStreamResourceCatalog resourceCatalog
-    ) {
-        this.registry = Objects.requireNonNull(registry, "registry must not be null");
-        this.resourceCatalog = Objects.requireNonNull(resourceCatalog, "resourceCatalog must not be null");
+    public ClientStreamController(ClientStreamService service) {
+        this.service = Objects.requireNonNull(service, "service must not be null");
     }
 
     @GetMapping(value = "/{resourceName}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -40,7 +34,7 @@ public final class ClientStreamController {
             @RequestParam(name = "ids") List<String> resourceIds
     ) {
         try {
-            return registry.subscribe(resourceName, resourceIds);
+            return service.subscribe(resourceName, resourceIds);
         } catch (ClientStreamAccessDeniedException exception) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, exception.getMessage(), exception);
         } catch (ClientStreamLimitExceededException exception) {
@@ -59,32 +53,13 @@ public final class ClientStreamController {
             @PathVariable String resourceName,
             @PathVariable String resourceId
     ) {
-        final SseEmitter emitter;
         try {
-            emitter = registry.subscribe(resourceName, List.of(resourceId));
+            return service.subscribe(resourceName, resourceId);
         } catch (ClientStreamAccessDeniedException exception) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, exception.getMessage(), exception);
         } catch (ClientStreamLimitExceededException exception) {
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, exception.getMessage(), exception);
         }
-
-        try {
-            final Object initialPayload = resourceCatalog.find(resourceName)
-                    .map(resourceHandler -> resourceHandler.resource(resourceId))
-                    .orElse(null);
-            if (initialPayload != null) {
-                registry.sendInitial(emitter, resourceName, resourceId, initialPayload);
-            }
-        } catch (ClientStreamAccessDeniedException exception) {
-            registry.unsubscribe(emitter);
-            emitter.completeWithError(exception);
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, exception.getMessage(), exception);
-        } catch (RuntimeException exception) {
-            registry.unsubscribe(emitter);
-            emitter.completeWithError(exception);
-            throw exception;
-        }
-        return emitter;
     }
 
 }
