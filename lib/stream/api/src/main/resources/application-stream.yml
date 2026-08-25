@@ -1,0 +1,6 @@
+ravcube:
+  stream:
+    path: /streams
+    timeout: PT30M
+    max-ids-per-subscription: 100
+    max-subscriptions: 1000
