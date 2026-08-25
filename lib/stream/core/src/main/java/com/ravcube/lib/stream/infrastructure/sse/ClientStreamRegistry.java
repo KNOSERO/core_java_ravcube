@@ -105,27 +105,24 @@ public final class ClientStreamRegistry implements DisposableBean {
                 validatedIds
         );
 
+        final SseEmitter emitter;
+        final RegisteredSubscription registered;
         synchronized (subscriptions) {
             if (subscriptions.size() >= maxSubscriptions) {
                 throw new ClientStreamLimitExceededException(
                         "Maximum number of stream subscriptions has been reached"
                 );
             }
-        }
 
-        final SseEmitter emitter = Objects.requireNonNull(
-                emitterFactory.apply(timeout.toMillis()),
-                "emitterFactory returned null"
-        );
-        final RegisteredSubscription registered =
-                new RegisteredSubscription(subscription, emitter, maxPendingEventsPerSubscription);
-
-        synchronized (subscriptions) {
-            if (subscriptions.size() >= maxSubscriptions) {
-                throw new ClientStreamLimitExceededException(
-                        "Maximum number of stream subscriptions has been reached"
-                );
-            }
+            emitter = Objects.requireNonNull(
+                    emitterFactory.apply(timeout.toMillis()),
+                    "emitterFactory returned null"
+            );
+            registered = new RegisteredSubscription(
+                    subscription,
+                    emitter,
+                    maxPendingEventsPerSubscription
+            );
             subscriptions.add(registered);
         }
 
