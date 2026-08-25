@@ -30,7 +30,7 @@ import static com.ravcube.test.kafka.KafkaTestProfiles.TEST_KAFKA_PROFILE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@ActiveProfiles({"stream-test", "kafka", TEST_KAFKA_PROFILE})
+@ActiveProfiles({"stream", "stream-test", "kafka", TEST_KAFKA_PROFILE})
 @SpringBootTest(
         classes = ClientStreamApiTestApplication.class,
         properties = {
