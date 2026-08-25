@@ -1,8 +1,6 @@
 package com.ravcube.lib.stream.infrastructure.sse;
 
-import com.ravcube.lib.stream.api.ClientStreamAuthorization;
 import com.ravcube.lib.stream.api.ClientStreamRefreshNotification;
-import com.ravcube.lib.stream.application.ClientStreamAccessDeniedException;
 import com.ravcube.lib.stream.application.ClientStreamLimitExceededException;
 import com.ravcube.lib.stream.domain.ClientStreamSubscription;
 import com.ravcube.lib.stream.infrastructure.config.ClientStreamProperties;
@@ -26,20 +24,15 @@ public final class ClientStreamRegistry {
     private final Duration timeout;
     private final int maxIdsPerSubscription;
     private final int maxSubscriptions;
-    private final ClientStreamAuthorization authorization;
     private final LongFunction<SseEmitter> emitterFactory;
     private final CopyOnWriteArrayList<RegisteredSubscription> subscriptions = new CopyOnWriteArrayList<>();
 
-    public ClientStreamRegistry(
-            ClientStreamProperties properties,
-            ClientStreamAuthorization authorization
-    ) {
-        this(properties, authorization, timeout -> new SseEmitter(timeout));
+    public ClientStreamRegistry(ClientStreamProperties properties) {
+        this(properties, timeout -> new SseEmitter(timeout));
     }
 
     ClientStreamRegistry(
             ClientStreamProperties properties,
-            ClientStreamAuthorization authorization,
             LongFunction<SseEmitter> emitterFactory
     ) {
         final ClientStreamProperties validatedProperties = Objects.requireNonNull(
@@ -49,10 +42,6 @@ public final class ClientStreamRegistry {
         this.timeout = validatedProperties.timeout();
         this.maxIdsPerSubscription = validatedProperties.maxIdsPerSubscription();
         this.maxSubscriptions = validatedProperties.maxSubscriptions();
-        this.authorization = Objects.requireNonNull(
-                authorization,
-                "authorization must not be null"
-        );
         this.emitterFactory = Objects.requireNonNull(
                 emitterFactory,
                 "emitterFactory must not be null"
@@ -67,36 +56,21 @@ public final class ClientStreamRegistry {
                 validatedIds
         );
 
-        for (String resourceId : subscription.getResourceIds()) {
-            assertAuthorized(validatedResourceName, resourceId);
-        }
-
         return register(subscription);
     }
 
-    public void publish(String resourceName, String resourceId) {
+    public void publish(String resourceName, String resourceId, long version) {
+        final String validatedResourceName = requireText(resourceName, "resourceName");
         final ClientStreamRefreshNotification notification =
-                new ClientStreamRefreshNotification(resourceName, resourceId);
-
-        if (!isAuthorized(notification.resourceName(), notification.resourceId())) {
-            return;
-        }
+                new ClientStreamRefreshNotification(resourceId, version);
 
         publish(
                 subscription -> subscription.accepts(
-                        notification.resourceName(),
+                        validatedResourceName,
                         notification.resourceId()
                 ),
                 notification
         );
-    }
-
-    private void assertAuthorized(String resourceName, String resourceId) {
-        final String validatedResourceName = requireText(resourceName, "resourceName");
-        final String validatedResourceId = requireText(resourceId, "resourceId");
-        if (!isAuthorized(validatedResourceName, validatedResourceId)) {
-            throw new ClientStreamAccessDeniedException(validatedResourceName, validatedResourceId);
-        }
     }
 
     private SseEmitter register(ClientStreamSubscription subscription) {
@@ -131,10 +105,6 @@ public final class ClientStreamRegistry {
         subscriptions.stream()
                 .filter(selector)
                 .forEach(subscription -> send(subscription.emitter(), notification));
-    }
-
-    private boolean isAuthorized(String resourceName, String resourceId) {
-        return authorization.canRead(resourceName, resourceId);
     }
 
     private void send(
