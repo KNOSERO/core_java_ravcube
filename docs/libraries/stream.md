@@ -1,57 +1,16 @@
 # Stream
 
-The Stream modules provide a read-only Spring MVC implementation for
-server-sent events (SSE). Resource refreshes are triggered only by the existing
-`lib:event` module.
+Stream udostępnia klientowi odczytowy kanał SSE. Klient subskrybuje jeden albo
+wiele identyfikatorów zasobu, a po zmianie otrzymuje tylko aktualizację
+pasującego zasobu.
 
-## Modules
+Biblioteka nie aktualizuje danych biznesowych. Zmiana jest zgłaszana przez
+event, a Stream pobiera aktualny stan zasobu i wysyła go do właściwych
+subskrybentów.
 
-```text
-lib:stream:common
-lib:stream:api
-lib:stream:core
-```
+## Instalacja
 
-The dependency direction is:
-
-```mermaid
-flowchart LR
-  APP["Application"] --> API["lib:stream:api"]
-  API -->|api| COMMON["lib:stream:common"]
-  API -->|implementation| CORE["lib:stream:core"]
-  CORE -->|implementation| COMMON
-  COMMON --> EVENT_API["lib:event:api"]
-  API --> EVENT_CORE["lib:event:core"]
-```
-
-`lib:stream:common` contains all shared contracts: external read interfaces and
-the refresh event. `lib:stream:api` is the public facade used by applications:
-it re-exports `common` and brings the `core` implementation at runtime.
-The API module contains the Spring MVC controller and event adapters; they call
-the application service from `lib:stream:core`. The core module contains the
-service, SSE registry, read handlers, and domain rules.
-
-```text
-lib/stream/common/src/main/java/com/ravcube/lib/stream
-  api/                                # shared read contracts
-    ClientStreamResourceReader.java
-    ClientStreamAuthorization.java
-  common/event/
-    ClientStreamRefreshEvent.java     # shared event contract
-
-lib/stream/api/build.gradle.kts        # public facade: common + core runtime
-lib/stream/api/src/main/java/com/ravcube/lib/stream
-  web/                                # read-only HTTP/SSE controller
-  event/                              # lib:event adapters using core service
-
-lib/stream/core/src/main/java/com/ravcube/lib/stream
-  application/                         # service, resource catalog and limits
-  infrastructure/config/              # runtime properties
-  infrastructure/sse/                  # SseEmitter registry
-  domain/                              # subscription rules
-```
-
-An external application depends only on the facade:
+Aplikacja korzysta z publicznego modułu:
 
 ```kotlin
 dependencies {
@@ -59,117 +18,189 @@ dependencies {
 }
 ```
 
-## Read contracts
+Aplikacja nie musi zależeć bezpośrednio od `stream:common` ani
+`stream:core`.
 
-An application provides a reader for each resource type:
+## Pierwsze użycie
+
+Do uruchomienia Stream aplikacja dostarcza:
+
+1. reader zasobu;
+2. autoryzację odczytu;
+3. publikację `ClientStreamRefreshEvent` po udanej zmianie biznesowej.
+
+### 1. Reader zasobu
+
+Reader mówi bibliotece, jak pobrać aktualny zasób po jego nazwie i ID:
 
 ```java
-import com.ravcube.lib.stream.api.ClientStreamResourceReader;
-
 @Component
-final class PolicyClaimStream implements ClientStreamResourceReader<PolicyClaimDto> {
+final class ClaimStreamReader implements ClientStreamResourceReader<ClaimDto> {
 
     @Override
     public String resourceName() {
-        return "policies.claims";
+        return "claims";
     }
 
     @Override
-    public PolicyClaimDto resource(String resourceId) {
-        return claimQuery.load(resourceId);
+    public ClaimDto resource(String resourceId) {
+        return claimQuery.findById(resourceId).orElse(null);
     }
 }
 ```
 
-The application also provides resource-level authorization:
+`resourceName` musi być unikalne w aplikacji. Reader zwraca aktualny stan
+zasobu, a nie event ani obiekt SSE.
+
+### 2. Autoryzacja
+
+Aplikacja decyduje, czy bieżący użytkownik może czytać konkretny zasób:
 
 ```java
 @Bean
 ClientStreamAuthorization streamAuthorization(ClaimAccess claimAccess) {
     return (resourceName, resourceId) ->
-            claimAccess.canRead(CurrentUserContext.current(), resourceName, resourceId);
+            claimAccess.canRead(resourceName, resourceId);
 }
 ```
 
-These contracts are read-only. They do not publish refreshes and do not expose
-SSE implementation details.
+Autoryzacja jest sprawdzana przy tworzeniu subskrypcji oraz przed wysłaniem
+refreshu.
 
-## Refresh event
+### 3. Subskrypcja klienta
 
-A successful business operation publishes the shared event through the
-existing event module:
+Jeden zasób:
+
+```http
+GET /streams/claims/123
+Accept: text/event-stream
+```
+
+Kilka zasobów:
+
+```http
+GET /streams/claims?ids=123&ids=456
+Accept: text/event-stream
+```
+
+W przeglądarce klient może użyć `EventSource`:
+
+```javascript
+const stream = new EventSource("/streams/claims/123");
+
+stream.addEventListener("refresh", event => {
+    const claim = JSON.parse(event.data);
+    renderClaim(claim);
+});
+```
+
+## Jak działa subskrypcja
+
+Subskrypcja określa:
+
+- nazwę zasobu;
+- zbiór identyfikatorów;
+- połączenie SSE klienta.
+
+### Jeden ID
+
+`GET /streams/{resourceName}/{resourceId}`:
+
+- sprawdza autoryzację;
+- rejestruje połączenie;
+- pobiera aktualny zasób;
+- wysyła początkowy event `refresh`, jeśli reader zwróci dane;
+- czeka na kolejne zmiany.
+
+### Wiele ID
+
+`GET /streams/{resourceName}?ids=id1&ids=id2`:
+
+- sprawdza autoryzację dla każdego ID;
+- rejestruje jedną subskrypcję z wybranymi ID;
+- nie wysyła początkowego snapshotu kolekcji;
+- czeka na eventy dotyczące wybranych ID.
+
+Przykład: subskrypcja `123,456` otrzyma refresh dla `123`, ale nie otrzyma
+refreshu dla `789`.
+
+Puste ID, brak parametru `ids`, brak uprawnień albo przekroczenie limitu
+subskrypcji kończy się błędem HTTP. Domyślne limity to 100 ID w jednej
+subskrypcji i 1000 aktywnych subskrypcji.
+
+## Jak działa refresh
+
+Po udanej zmianie biznesowej aplikacja publikuje event:
 
 ```java
-import com.ravcube.lib.event.inteface.EventPublisher;
-import com.ravcube.lib.stream.common.event.ClientStreamRefreshEvent;
-
-eventPublisher.publish(new ClientStreamRefreshEvent("policies.claims", claimId));
+eventPublisher.publish(
+        new ClientStreamRefreshEvent("claims", claimId)
+);
 ```
 
-`stream:api` contains the event adapter and registers the listener using
-`DefaultCommitPublisher` and `DefaultCommitListener`. The listener receives the
-event after commit and delegates to `stream:core`, which loads the current
-resource, rechecks access for every SSE subscription, and sends one `refresh`
-event to matching resource ids.
+Event zawiera tylko:
 
-The event contains only `resourceName` and `resourceId`; the payload is loaded
-after commit and is not transported through the event bus.
+- `resourceName`;
+- `resourceId`.
 
-The refresh flow is:
+Nie zawiera payloadu zasobu. Dzięki temu event pozostaje małym sygnałem
+„zasób się zmienił”, a aktualny stan jest pobierany dopiero po zakończeniu
+transakcji.
 
-```mermaid
-sequenceDiagram
-  participant B as Business operation
-  participant P as lib:event publisher
-  participant L as stream:api listener
-  participant S as stream:core service
-  participant C as Matching SSE clients
+Po odebraniu eventu biblioteka:
 
-  B->>P: publish(resourceName, resourceId)
-  P-->>L: deliver after commit
-  L->>S: refresh(resourceName, resourceId)
-  S->>S: load resource and recheck authorization
-  S-->>C: send refresh event for matching id
-```
+1. odbiera event po commitcie transakcji;
+2. wyszukuje reader dla `resourceName`;
+3. pobiera aktualny zasób po `resourceId`;
+4. ponownie sprawdza autoryzację;
+5. wysyła event tylko do subskrypcji zawierających to ID.
 
-## HTTP endpoints
-
-The default base path is `/streams`. Override it with
-`ravcube.stream.path`. The emitter timeout defaults to `PT30M` and can be
-changed with `ravcube.stream.timeout`. Resource limits default to 100 ids per
-subscription and 1000 active subscriptions:
-
-```yaml
-ravcube:
-  stream:
-    timeout: PT30M
-    max-ids-per-subscription: 100
-    max-subscriptions: 1000
-```
-
-| Method | Endpoint | Behavior |
-| --- | --- | --- |
-| `GET` | `/streams/{resourceName}/{resourceId}` | subscribes to one resource and sends an initial `refresh` event when a reader returns a payload |
-| `GET` | `/streams/{resourceName}?ids=1&ids=2` | subscribes to selected resource ids |
-
-There is no update endpoint and no Feign update client. Refreshes enter the
-module only as `ClientStreamRefreshEvent` events.
-
-## SSE event format
-
-Every refresh uses the event name `refresh`:
+Event SSE ma nazwę `refresh`:
 
 ```text
 event: refresh
 data: <serialized resource payload>
 ```
 
-SSE is a live notification channel, not a durable event store. After a
-reconnect, the client should load the current resource through the normal
-authorized read API. The selected-ids endpoint is a notification subscription
-and does not send an initial collection snapshot.
+## Ogólny przepływ
 
-The current `lib:event` Spring transport is process-local. The stream module
-therefore delivers events only to subscribers connected to the same application
-instance. A multi-instance deployment requires a distributed event transport
-decision outside this read-only stream module.
+```mermaid
+sequenceDiagram
+  participant App as Aplikacja
+  participant Event as lib:event
+  participant Listener as Stream event listener
+  participant Service as Stream service
+  participant Client as Klient SSE
+
+  Client->>Service: subskrypcja resourceName + ID
+  Service-->>Client: połączenie SSE
+  App->>Event: ClientStreamRefreshEvent(resourceName, resourceId)
+  Event-->>Listener: event po commitcie
+  Listener->>Service: refresh(resourceName, resourceId)
+  Service->>Service: pobierz aktualny zasób
+  Service->>Service: sprawdź autoryzację
+  Service-->>Client: refresh tylko dla pasującego ID
+```
+
+## Konfiguracja
+
+Domyślna ścieżka to `/streams`. Można ją zmienić przez
+`ravcube.stream.path`.
+
+```yaml
+ravcube:
+  stream:
+    path: /streams
+    timeout: PT30M
+    max-ids-per-subscription: 100
+    max-subscriptions: 1000
+```
+
+## Ważne zachowanie
+
+SSE jest kanałem bieżących powiadomień, a nie trwałym magazynem eventów.
+
+Po reconnect klient powinien ponownie pobrać aktualny stan przez zwykłe,
+autoryzowane API. Obecny transport `lib:event` działa lokalnie w procesie,
+dlatego event trafi tylko do klientów podłączonych do tej samej instancji
+aplikacji.
