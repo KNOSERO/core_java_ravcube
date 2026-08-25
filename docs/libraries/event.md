@@ -39,6 +39,26 @@ class PolicyCreatedPublisher extends DefaultCommitPublisher<PolicyCreated> {
 }
 ```
 
+## Spring commit hook and Kafka delivery
+
+The public entry point remains `EventPublisher`. For a Kafka publisher the
+library uses Spring's transaction lifecycle only as an `AFTER_COMMIT` trigger:
+
+```text
+EventPublisher.publish(event)
+    -> Spring transaction event hook
+    -> Kafka producer
+    -> Kafka consumer
+```
+
+Spring is not the cross-pod delivery mechanism. The record is delivered between
+processes by Kafka. A rollback prevents the Kafka publication because the
+publisher runs after commit.
+
+Stream uses a direct Kafka listener with a service-scoped topic and a
+pod-specific consumer group. This keeps Stream's topic out of the generic event
+listener used by unrelated event types.
+
 ## Scoped Kafka topic
 
 The default Kafka publisher uses the topic from `Topic`. A specialized
