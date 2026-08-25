@@ -1,11 +1,120 @@
 # Stream
 
-Stream udostępnia klientowi odczytowy kanał SSE. Jest lekkim informatorem o
-zmianie zasobu, a nie kanałem przesyłającym obiekty biznesowe.
+## Model działania
 
-Klient subskrybuje jeden albo wiele identyfikatorów. Po zmianie otrzymuje
-identyfikator zasobu i jego wersję, a następnie pobiera aktualny obiekt przez
-zwykłe API REST.
+Stream jest kanałem powiadomień SSE. Nie przesyła obiektu biznesowego i nie
+pobiera go za aplikację.
+
+Po zmianie zasobu klient dostaje tylko:
+
+```json
+{
+  "resourceId": "123",
+  "version": 42
+}
+```
+
+Następnie klient sam wykonuje zwykły, autoryzowany request REST po aktualny
+obiekt. Dzięki temu Stream nie musi znać modelu domenowego, serializować payloadu
+biznesowego ani wykonywać autoryzacji danych.
+
+Najważniejszy przepływ wygląda tak:
+
+```mermaid
+sequenceDiagram
+  participant Client as Klient
+  participant REST as API REST
+  participant App as Serwis
+  participant Kafka as Kafka
+  participant PodA as Pod A
+  participant PodB as Pod B
+  participant SSE as Lokalny rejestr SSE
+
+  Client->>SSE: otwiera subskrypcję
+  Client->>REST: pobiera stan początkowy
+  App->>Kafka: ClientStreamRefreshEvent po commitcie
+  Kafka-->>PodA: event przez grupę pod-A
+  Kafka-->>PodB: event przez grupę pod-B
+  PodA->>SSE: routuje po resourceName + resourceId
+  PodB->>SSE: routuje po resourceName + resourceId
+  SSE-->>Client: resourceId + version
+  Client->>REST: pobiera aktualny obiekt
+  REST-->>Client: aktualny payload biznesowy
+```
+
+## Dlaczego Kafka, a nie lokalny event Springa
+
+Lokalny event Springa działa tylko w jednej JVM. Jeżeli klient jest podłączony
+do poda A, a zmiana zostanie obsłużona przez pod B, rejestr SSE poda A nie
+otrzymałby informacji o zmianie.
+
+W Stream Spring jest używany wyłącznie jako mechanizm uruchomienia publikacji
+po `AFTER_COMMIT`. Właściwe dostarczenie między podami odbywa się przez Kafka:
+
+1. aplikacja wywołuje publiczny `EventPublisher`;
+2. publisher Stream oczekuje na zakończenie transakcji;
+3. po commitcie event trafia na topic Kafka;
+4. każdy pod odbiera własną kopię eventu;
+5. pod aktualizuje tylko swoje lokalne połączenia SSE.
+
+To oznacza, że Stream nie używa już lokalnego `DefaultCommitPublisher` ani
+lokalnego listenera Springowego do dostarczania refreshu.
+
+## Izolacja serwisów i podów
+
+Kafka dostarcza rekord raz na grupę konsumencką, a nie raz do każdego procesu.
+Dlatego Stream używa dwóch identyfikatorów:
+
+- `service-name` — określa topic całego serwisu;
+- `instance-id` — określa grupę konkretnego poda.
+
+Dla konfiguracji:
+
+```yaml
+ravcube:
+  stream:
+    kafka:
+      service-name: claims-service
+      instance-id: pod-1
+```
+
+powstają:
+
+```text
+topic:          stream.resource.refresh.claims-service.commit
+consumer group: stream-refresh.claims-service.pod-1
+```
+
+Dwa pody tego samego serwisu:
+
+```mermaid
+graph LR
+  Event[RefreshEvent claims] --> Topic[stream.resource.refresh.claims-service.commit]
+  Topic --> GroupA[stream-refresh.claims-service.pod-1]
+  Topic --> GroupB[stream-refresh.claims-service.pod-2]
+  GroupA --> RegistryA[rejestr SSE poda 1]
+  GroupB --> RegistryB[rejestr SSE poda 2]
+```
+
+Każdy pod musi mieć:
+
+- ten sam `service-name`;
+- inny `instance-id`.
+
+Jeżeli wszystkie pody użyją tej samej grupy, Kafka rozdzieli eventy między pody
+i wymaganie nie zostanie spełnione. Jeżeli każdy pod użyje innego
+`service-name`, powstaną różne topici i pody nie będą słuchały wspólnego
+kanału.
+
+Inny serwis, np. `payments-service`, ma własny topic:
+
+```text
+stream.resource.refresh.payments-service.commit
+```
+
+Nie zmieniaj globalnego `spring.kafka.consumer.group-id`. Konfiguracja Stream
+jest ograniczona do `ravcube.stream.kafka`, dlatego nie wpływa na pozostałe
+eventy używane przez aplikację.
 
 ## Instalacja
 
@@ -20,10 +129,9 @@ dependencies {
 Aplikacja nie musi zależeć bezpośrednio od `stream:common` ani
 `stream:core`.
 
-## Konfiguracja Kafka
+## Konfiguracja
 
-Transport odświeżenia Stream działa przez Kafka. Należy aktywować profil
-`kafka` oraz ustawić stabilną nazwę serwisu:
+Profil `kafka` jest wymagany:
 
 ```yaml
 spring:
@@ -34,24 +142,67 @@ ravcube:
   stream:
     kafka:
       service-name: claims-service
-      # Opcjonalne. W Kubernetes powinno być unikalne dla każdego poda.
-      instance-id: pod-1
+      # W Kubernetes najlepiej użyć nazwy poda.
+      instance-id: ${HOSTNAME}
+
+    path: /streams
+    timeout: PT30M
+    max-ids-per-subscription: 100
+    max-subscriptions: 1000
 ```
 
-`service-name` musi być takie samo dla wszystkich podów jednego serwisu i
-różne dla innych serwisów. `instance-id` musi być unikalne dla każdego poda.
-Jeżeli nie zostanie podane, biblioteka użyje wartości środowiskowej `HOSTNAME`,
-a poza środowiskiem z `HOSTNAME` wygeneruje identyfikator losowy.
+`service-name` jest wymagane i musi być stabilne dla jednego serwisu.
+`instance-id` powinno być unikalne dla każdego poda. Jeżeli nie zostanie
+ustawione, biblioteka użyje wartości środowiskowej `HOSTNAME`, a poza
+środowiskiem z `HOSTNAME` wygeneruje identyfikator losowy.
 
-## Pierwsze użycie
+## Publikacja zmiany
 
-Aplikacja dostarcza:
+Event należy opublikować po zmianie biznesowej, w tej samej transakcji:
 
-1. publikację `ClientStreamRefreshEvent` po udanej zmianie biznesowej;
-2. zwykły endpoint REST, z którego klient pobierze aktualny obiekt;
-3. wersję zasobu pochodzącą ze źródła prawdy.
+```java
+eventPublisher.publish(
+        new ClientStreamRefreshEvent(
+                "claims",
+                claimId,
+                claimVersion
+        )
+);
+```
 
-### Subskrypcja i odczyt
+Event zawiera:
+
+- `resourceName` — nazwę zasobu używaną do routingu;
+- `resourceId` — identyfikator zmienionego zasobu;
+- `version` — aktualną wersję ze źródła prawdy.
+
+`version` nie jest generowana przez Stream. Nie należy umieszczać w evencie
+payloadu biznesowego.
+
+Publikacja działa po commitcie. Jeżeli transakcja zostanie wycofana, refresh
+nie powinien zostać wysłany do Kafka.
+
+## Subskrypcja SSE
+
+Jeden zasób:
+
+```http
+GET /streams/claims/123
+Accept: text/event-stream
+```
+
+Wiele zasobów:
+
+```http
+GET /streams/claims?ids=123&ids=456
+Accept: text/event-stream
+```
+
+Oba warianty używają tego samego modelu subskrypcji: nazwa zasobu oraz zbiór
+identyfikatorów. Stream nie wysyła initial snapshotu. Klient powinien pobrać
+stan początkowy przez REST.
+
+Przykład klienta:
 
 ```javascript
 const stream = new EventSource("/streams/claims?ids=123&ids=456");
@@ -67,138 +218,57 @@ stream.addEventListener("refresh", async event => {
 
     renderClaim(await response.json());
 });
-```
+`
 
-Stream nie zna ścieżki REST aplikacji. Odpowiada wyłącznie za subskrypcję i
-powiadomienie o zmianie. Identyfikator nie jest traktowany przez ten moduł jako
-dana wrażliwa. Ochrona danych biznesowych pozostaje w zwykłym API REST.
-
-## Jak działa subskrypcja
-
-Subskrypcja określa:
-
-- nazwę zasobu;
-- zbiór identyfikatorów;
-- połączenie SSE klienta.
-
-Jeden zasób:
-
-```http
-GET /streams/claims/123
-Accept: text/event-stream
-```
-
-Kilka zasobów:
-
-```http
-GET /streams/claims?ids=123&ids=456
-Accept: text/event-stream
-```
-
-Oba warianty mają ten sam format eventu. Stream nie wysyła initial snapshotu.
-Klient powinien pobrać stan początkowy przez REST.
-
-Puste ID, brak parametru `ids` albo przekroczenie limitu subskrypcji kończy
-się błędem HTTP. Domyślne limity to 100 ID w jednej subskrypcji i 1000
-aktywnych subskrypcji.
-
-## Jak działa refresh
-
-Po udanej zmianie biznesowej aplikacja publikuje event przez istniejący moduł
-`lib:event`:
-
-```java
-eventPublisher.publish(
-        new ClientStreamRefreshEvent("claims", claimId, claimVersion)
-);
-```
-
-Event jest obsługiwany dopiero po zakończeniu transakcji. Zawiera:
-
-- `resourceName` — nazwę zasobu używaną do routingu;
-- `resourceId` — identyfikator zmienionego zasobu;
-- `version` — wersję pochodzącą ze źródła prawdy.
-
-Nie zawiera payloadu zasobu. Wersja nie jest generowana przez Stream.
-
-## Izolacja między serwisami i podami
-
-Dla konfiguracji:
-
-```yaml
-ravcube:
-  stream:
-    kafka:
-      service-name: claims-service
-      instance-id: pod-1
-```
-
-biblioteka używa:
-
-- topicu `stream.resource.refresh.claims-service.commit`;
-- grupy konsumenckiej `stream-refresh.claims-service.pod-1`.
-
-Wszystkie pody serwisu używają tego samego topicu, ale każdy pod ma własną
-grupę konsumencką. Dzięki temu każdy pod otrzymuje własną kopię eventu i może
-odświeżyć lokalne połączenia SSE.
-
-Inny serwis, np. z `service-name: payments-service`, używa innego topicu.
-Nie zmieniaj globalnego `spring.kafka.consumer.group-id` w celu konfiguracji
-Stream — zmiana ma dotyczyć wyłącznie właściwości `ravcube.stream.kafka`.
-
-SSE ma jeden format payloadu:
+Powiadomienie SSE ma format:
 
 ```text
 event: refresh
 data: {"resourceId":"123","version":42}
 ```
 
-Aktualny obiekt jest pobierany dopiero przez REST klienta.
+Stream nie sprawdza uprawnień do danych biznesowych. Za autoryzację i filtrację
+payloadu odpowiada endpoint REST aplikacji. W założeniu identyfikator zasobu nie
+jest daną wrażliwą.
 
-## Ogólny przepływ
+Puste ID, brak parametru `ids` albo przekroczenie limitów kończy się błędem
+HTTP. Domyślne limity to 100 ID w jednej subskrypcji i 1000 aktywnych
+subskrypcji.
 
-```mermaid
-sequenceDiagram
-  participant Client as Klient
-  participant SSE as Stream SSE
-  participant API as REST API
-  participant App as Aplikacja
-  participant Kafka as Kafka topic per service
-  participant PodA as Stream listener pod A
-  participant PodB as Stream listener pod B
+## Co dzieje się po reconnect
 
-  Client->>SSE: subskrypcja resourceName + ID
-  Client->>API: GET stanu początkowego
-  App->>Kafka: RefreshEvent po commitcie
-  Kafka-->>PodA: event w grupie pod-A
-  Kafka-->>PodB: event w grupie pod-B
-  PodA->>SSE: refresh(resourceId, version)
-  PodB->>SSE: refresh(resourceId, version)
-  SSE-->>Client: notification resourceId + version
-  Client->>API: GET aktualnego zasobu
-  API-->>Client: aktualny obiekt
-```
+Kafka nie jest magazynem stanu SSE. Stream informuje o zmianie, ale nie gwarantuje
+odtworzenia wszystkich powiadomień dla klienta.
 
-Każdy pod otrzymuje event, ale Kafka nie jest magazynem stanu Stream. Po
-reconnect klient powinien pobrać aktualny stan przez REST.
+Po reconnect klient powinien:
 
-## Konfiguracja SSE
+1. ponownie otworzyć subskrypcję;
+2. pobrać aktualny stan przez REST;
+3. używać `version` do pominięcia starszego lokalnego stanu, jeżeli aplikacja
+   utrzymuje wersjonowanie po stronie klienta.
 
-Domyślna ścieżka to `/streams`. Można ją zmienić przez
-`ravcube.stream.path`.
-
-```yaml
-ravcube:
-  stream:
-    path: /streams
-    timeout: PT30M
-    max-ids-per-subscription: 100
-    max-subscriptions: 1000
-```
+Jeżeli zasób został usunięty, request REST może zwrócić `404` i klient powinien
+usunąć go z lokalnego widoku.
 
 ## Testowanie
 
-Testy core sprawdzają routing SSE bez HTTP i Kafka. Testy API sprawdzają
-prawdziwy przepływ HTTP + Kafka z użyciem modułu `test:kafka` i Testcontainers.
+Testy `stream:core` sprawdzają routing SSE, limity, cleanup i wysyłanie
+powiadomień bez HTTP, Spring eventów ani Kafka.
+
+Testy `stream:api` sprawdzają pełny przepływ:
+
+```text
+HTTP subscription
+    -> EventPublisher
+    -> AFTER_COMMIT
+    -> Kafka Testcontainer
+    -> Kafka listener
+    -> lokalny rejestr SSE
+    -> HTTP SSE client
+```
+
+Do testów Kafka używany jest istniejący moduł `test:kafka`. Nie należy zastępować
+tego przepływu mockami, ponieważ najważniejszym kontraktem jest izolacja topicu,
+grup konsumenckich i serializacji eventu.
 
 SSE jest kanałem bieżących powiadomień, a nie trwałym magazynem eventów.
