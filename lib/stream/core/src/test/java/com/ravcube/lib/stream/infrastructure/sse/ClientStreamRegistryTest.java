@@ -53,7 +53,7 @@ class ClientStreamRegistryTest {
         registry.subscribe("claims", List.of("1"));
         registry.subscribe("claims", List.of("1", "2"));
         registry.subscribe("claims", List.of("2"));
-        registry.publish("claims", "1", "claim-1");
+        registry.publish("claims", "1");
 
         assertEquals(1, first.eventCount());
         assertEquals(1, firstAndSecond.eventCount());
@@ -97,7 +97,7 @@ class ClientStreamRegistryTest {
 
         registry.subscribe("claims", List.of("1"));
         allowed.set(false);
-        registry.publish("claims", "1", "claim-1");
+        registry.publish("claims", "1");
 
         assertEquals(0, subscriber.eventCount());
     }
