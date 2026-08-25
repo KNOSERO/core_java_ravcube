@@ -21,8 +21,24 @@ public final class ClientStreamService {
         return registry.subscribe(resourceName, resourceIds);
     }
 
+    public SseEmitter subscribe(
+            String resourceName,
+            Collection<String> resourceIds,
+            String clientKey
+    ) {
+        return registry.subscribe(resourceName, resourceIds, clientKey);
+    }
+
     public SseEmitter subscribe(String resourceName, String resourceId) {
-        return subscribe(resourceName, List.of(resourceId));
+        return subscribe(resourceName, resourceId, "internal");
+    }
+
+    public SseEmitter subscribe(
+            String resourceName,
+            String resourceId,
+            String clientKey
+    ) {
+        return subscribe(resourceName, List.of(resourceId), clientKey);
     }
 
     public void refresh(String resourceName, String resourceId, long version) {
