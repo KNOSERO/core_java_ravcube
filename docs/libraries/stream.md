@@ -82,8 +82,9 @@ ClientStreamAuthorizer streamAuthorizer(CurrentUser currentUser) {
 ```
 
 The authorization decision is checked when the subscription is created and
-again before each event is sent. This allows a revoked permission to stop
-future events for an existing connection.
+again before each event is sent. The refresh endpoint uses the same decision.
+This allows a revoked permission to stop future events for an existing
+connection and prevents refresh requests for unauthorized resources.
 
 ## HTTP endpoints
 

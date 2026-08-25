@@ -90,6 +90,21 @@ class ClientStreamRegistryTest {
     }
 
     @Test
+    void shouldRejectUnauthorizedResourceUpdate() {
+        final ClientStreamProperties properties = new ClientStreamProperties(Duration.ofMinutes(10));
+        final ClientStreamRegistry registry = new ClientStreamRegistry(
+                properties,
+                (resourceName, resourceIds) -> resourceId -> false,
+                timeout -> new RecordingEmitter()
+        );
+
+        assertThrows(
+                ClientStreamAccessDeniedException.class,
+                () -> registry.assertAuthorized("claims", "1")
+        );
+    }
+
+    @Test
     void shouldEnforceSubscriptionLimits() {
         final ClientStreamProperties properties = new ClientStreamProperties(
                 Duration.ofMinutes(10),

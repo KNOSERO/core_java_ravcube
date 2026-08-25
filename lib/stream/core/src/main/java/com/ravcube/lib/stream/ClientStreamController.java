@@ -91,6 +91,14 @@ public final class ClientStreamController {
             @PathVariable String resourceName,
             @PathVariable String resourceId
     ) {
+        try {
+            registry.assertAuthorized(resourceName, resourceId);
+        } catch (ClientStreamAccessDeniedException exception) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, exception.getMessage(), exception);
+        } catch (IllegalArgumentException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage(), exception);
+        }
+
         final ClientRestResourceStream<?> stream = findResourceStream(resourceName)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,

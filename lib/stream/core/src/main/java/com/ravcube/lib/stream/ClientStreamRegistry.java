@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
@@ -75,6 +76,19 @@ public final class ClientStreamRegistry {
                 subscription -> subscription.accepts(validatedResourceName, validatedResourceId),
                 payload
         );
+    }
+
+    void assertAuthorized(String resourceName, String resourceId) {
+        final String validatedResourceName = requireText(resourceName, "resourceName");
+        final Set<String> normalizedIds = normalizeIds(List.of(resourceId), maxIdsPerSubscription);
+        final String validatedResourceId = normalizedIds.iterator().next();
+        final ClientStreamAccess access = Objects.requireNonNull(
+                authorizer.authorize(validatedResourceName, normalizedIds),
+                "authorizer returned null access"
+        );
+        if (!access.allows(validatedResourceId)) {
+            throw new ClientStreamAccessDeniedException(validatedResourceName);
+        }
     }
 
     public void sendInitial(
