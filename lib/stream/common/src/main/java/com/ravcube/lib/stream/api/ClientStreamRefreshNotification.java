@@ -3,13 +3,15 @@ package com.ravcube.lib.stream.api;
 import java.util.Objects;
 
 public record ClientStreamRefreshNotification(
-        String resourceName,
-        String resourceId
+        String resourceId,
+        long version
 ) {
 
     public ClientStreamRefreshNotification {
-        resourceName = requireText(resourceName, "resourceName");
         resourceId = requireText(resourceId, "resourceId");
+        if (version < 0) {
+            throw new IllegalArgumentException("version must not be negative");
+        }
     }
 
     private static String requireText(String value, String name) {
