@@ -3,6 +3,7 @@ package com.ravcube.lib.event.publisher;
 import com.ravcube.lib.event.DomainEvent;
 import com.ravcube.lib.event.enums.EventSource;
 import com.ravcube.lib.event.kafka.KafkaPublishSupport;
+import com.ravcube.lib.logger.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
 
@@ -28,7 +29,14 @@ public class DefaultKafkaPublisher<E extends DomainEvent> extends AbstractCommit
     }
 
     @Autowired
-    private void setKafkaTemplate(KafkaTemplate<String, E> kafkaTemplate) {
-        this.kafkaPublisher = new KafkaPublishSupport<>(kafkaTemplate, source());
+    private void setKafkaTemplate(
+            KafkaTemplate<String, E> kafkaTemplate,
+            LoggerFactory loggerFactory
+    ) {
+        this.kafkaPublisher = new KafkaPublishSupport<>(
+                kafkaTemplate,
+                source(),
+                loggerFactory.getLogger(getClass())
+        );
     }
 }
