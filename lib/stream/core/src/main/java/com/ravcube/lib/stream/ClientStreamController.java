@@ -12,7 +12,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -21,14 +23,14 @@ import java.util.Optional;
 public final class ClientStreamController {
 
     private final ClientStreamRegistry registry;
-    private final List<ClientRestResourceStream<?>> resourceStreams;
+    private final Map<String, ClientRestResourceStream<?>> resourceStreams;
 
     public ClientStreamController(
             ClientStreamRegistry registry,
             List<ClientRestResourceStream<?>> resourceStreams
     ) {
         this.registry = Objects.requireNonNull(registry, "registry must not be null");
-        this.resourceStreams = List.copyOf(resourceStreams);
+        this.resourceStreams = indexResourceStreams(resourceStreams);
     }
 
     @GetMapping(value = "/{resourceName}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -38,6 +40,10 @@ public final class ClientStreamController {
     ) {
         try {
             return registry.subscribe(resourceName, resourceIds);
+        } catch (ClientStreamAccessDeniedException exception) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, exception.getMessage(), exception);
+        } catch (ClientStreamLimitExceededException exception) {
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, exception.getMessage(), exception);
         } catch (IllegalArgumentException exception) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -52,14 +58,30 @@ public final class ClientStreamController {
             @PathVariable String resourceName,
             @PathVariable String resourceId
     ) {
-        final Optional<ClientRestResourceStream<?>> stream = findResourceStream(resourceName);
-        final Object initialPayload = stream
-                .map(resourceHandler -> resourceHandler.resource(resourceId))
-                .orElse(null);
+        final SseEmitter emitter;
+        try {
+            emitter = registry.subscribe(resourceName, List.of(resourceId));
+        } catch (ClientStreamAccessDeniedException exception) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, exception.getMessage(), exception);
+        } catch (ClientStreamLimitExceededException exception) {
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, exception.getMessage(), exception);
+        }
 
-        final SseEmitter emitter = registry.subscribe(resourceName, List.of(resourceId));
-        if (initialPayload != null) {
-            registry.sendInitial(emitter, initialPayload);
+        try {
+            final Object initialPayload = findResourceStream(resourceName)
+                    .map(resourceHandler -> resourceHandler.resource(resourceId))
+                    .orElse(null);
+            if (initialPayload != null) {
+                registry.sendInitial(emitter, resourceName, resourceId, initialPayload);
+            }
+        } catch (ClientStreamAccessDeniedException exception) {
+            registry.unsubscribe(emitter);
+            emitter.completeWithError(exception);
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, exception.getMessage(), exception);
+        } catch (RuntimeException exception) {
+            registry.unsubscribe(emitter);
+            emitter.completeWithError(exception);
+            throw exception;
         }
         return emitter;
     }
@@ -83,15 +105,29 @@ public final class ClientStreamController {
     }
 
     private Optional<ClientRestResourceStream<?>> findResourceStream(String resourceName) {
-        final List<ClientRestResourceStream<?>> matches = resourceStreams.stream()
-                .filter(stream -> resourceName.equals(stream.resourceName()))
-                .toList();
+        return Optional.ofNullable(resourceStreams.get(resourceName));
+    }
 
-        if (matches.size() > 1) {
-            throw new IllegalStateException(
-                    "More than one stream resource handler registered for: " + resourceName
+    private static Map<String, ClientRestResourceStream<?>> indexResourceStreams(
+            List<ClientRestResourceStream<?>> streams
+    ) {
+        Objects.requireNonNull(streams, "resourceStreams must not be null");
+        final Map<String, ClientRestResourceStream<?>> indexed = new HashMap<>();
+        for (ClientRestResourceStream<?> stream : streams) {
+            Objects.requireNonNull(stream, "resource stream must not be null");
+            final String resourceName = Objects.requireNonNull(
+                    stream.resourceName(),
+                    "resourceName must not be null"
             );
+            if (resourceName.isBlank()) {
+                throw new IllegalStateException("resourceName must not be blank");
+            }
+            if (indexed.putIfAbsent(resourceName, stream) != null) {
+                throw new IllegalStateException(
+                        "More than one stream resource handler registered for: " + resourceName
+                );
+            }
         }
-        return matches.stream().findFirst();
+        return Map.copyOf(indexed);
     }
 }

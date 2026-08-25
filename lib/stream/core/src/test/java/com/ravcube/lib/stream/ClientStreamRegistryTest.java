@@ -26,6 +26,7 @@ class ClientStreamRegistryTest {
         );
         final ClientStreamRegistry registry = new ClientStreamRegistry(
                 properties,
+                (resourceName, resourceIds) -> resourceId -> true,
                 timeout -> emitters.removeFirst()
         );
 
@@ -45,12 +46,70 @@ class ClientStreamRegistryTest {
         final ClientStreamProperties properties = new ClientStreamProperties(Duration.ofMinutes(10));
         final ClientStreamRegistry registry = new ClientStreamRegistry(
                 properties,
+                (resourceName, resourceIds) -> resourceId -> true,
                 timeout -> new RecordingEmitter()
         );
 
         assertThrows(
                 IllegalArgumentException.class,
                 () -> registry.subscribe("claims", List.of())
+        );
+    }
+
+    @Test
+    void shouldRejectSubscriptionWhenOneIdIsNotAuthorized() {
+        final ClientStreamProperties properties = new ClientStreamProperties(Duration.ofMinutes(10));
+        final ClientStreamRegistry registry = new ClientStreamRegistry(
+                properties,
+                (resourceName, resourceIds) -> resourceId -> !resourceId.equals("2"),
+                timeout -> new RecordingEmitter()
+        );
+
+        assertThrows(
+                ClientStreamAccessDeniedException.class,
+                () -> registry.subscribe("claims", List.of("1", "2"))
+        );
+    }
+
+    @Test
+    void shouldStopSendingWhenAccessIsRevoked() {
+        final ClientStreamProperties properties = new ClientStreamProperties(Duration.ofMinutes(10));
+        final RecordingEmitter emitter = new RecordingEmitter();
+        final boolean[] allowed = {true};
+        final ClientStreamRegistry registry = new ClientStreamRegistry(
+                properties,
+                (resourceName, resourceIds) -> resourceId -> allowed[0],
+                timeout -> emitter
+        );
+
+        registry.subscribe("claims", List.of("1"));
+        allowed[0] = false;
+        registry.publish("claims", "1", "claim-1");
+
+        assertEquals(0, emitter.events);
+    }
+
+    @Test
+    void shouldEnforceSubscriptionLimits() {
+        final ClientStreamProperties properties = new ClientStreamProperties(
+                Duration.ofMinutes(10),
+                1,
+                1
+        );
+        final ClientStreamRegistry registry = new ClientStreamRegistry(
+                properties,
+                (resourceName, resourceIds) -> resourceId -> true,
+                timeout -> new RecordingEmitter()
+        );
+
+        assertThrows(
+                ClientStreamLimitExceededException.class,
+                () -> registry.subscribe("claims", List.of("1", "2"))
+        );
+        registry.subscribe("claims", List.of("1"));
+        assertThrows(
+                ClientStreamLimitExceededException.class,
+                () -> registry.subscribe("claims", List.of("2"))
         );
     }
 

@@ -11,9 +11,9 @@ lib:stream:api
 lib:stream:core
 ```
 
-`lib:stream:api` contains the framework-independent resource handler and
-publisher contracts. `lib:stream:core` contains the in-memory SSE registry,
-Spring MVC endpoints, and the default publisher.
+`lib:stream:api` contains the framework-independent resource handler, publisher,
+and authorization contracts. `lib:stream:core` contains the in-memory SSE
+registry, Spring MVC endpoints, and the default publisher.
 
 ## Dependency
 
@@ -70,11 +70,35 @@ For a payload that is already loaded, the publisher exposes one operation:
 publisher.publish("policies.claims", claimId, payload);
 ```
 
+The application must provide a resource-level authorizer. The stream module does
+not assume that authentication alone grants access:
+
+```java
+@Bean
+ClientStreamAuthorizer streamAuthorizer(CurrentUser currentUser) {
+    return (resourceName, resourceIds) -> resourceId ->
+            claimAccess.canRead(currentUser, resourceName, resourceId);
+}
+```
+
+The authorization decision is checked when the subscription is created and
+again before each event is sent. This allows a revoked permission to stop
+future events for an existing connection.
+
 ## HTTP endpoints
 
 The default base path is `/streams`. Override it with
 `ravcube.stream.path`. The emitter timeout defaults to `PT30M` and can be
-changed with `ravcube.stream.timeout`.
+changed with `ravcube.stream.timeout`. Resource limits default to 100 ids per
+subscription and 1000 active subscriptions:
+
+```yaml
+ravcube:
+  stream:
+    timeout: PT30M
+    max-ids-per-subscription: 100
+    max-subscriptions: 1000
+```
 
 | Method | Endpoint | Behavior |
 | --- | --- | --- |
@@ -98,12 +122,17 @@ event: refresh
 data: <serialized resource payload>
 ```
 
+When a publisher is called inside an active Spring transaction, the event is
+sent after a successful commit. A rollback therefore does not notify clients.
+
 The registry is process-local and in-memory. It is suitable for one application
-instance. In a multi-instance deployment, use the existing `lib:event` module
-to distribute an after-commit refresh request to every instance before calling
-the local publisher.
+instance. In a multi-instance deployment, an application must distribute a
+small `{resourceName, resourceId}` refresh message through the existing
+`lib:event` module after commit, then load the resource and call the local
+publisher on every instance. The stream module deliberately does not choose a
+Kafka/Redis deployment for the application.
 
 SSE is a live notification channel, not a durable event store. After a
 reconnect, the client should load the current resource through the normal
-authorized read API. Authentication and resource-level authorization remain the
-application's responsibility.
+authorized read API. The selected-ids endpoint is a notification subscription
+and does not send an initial collection snapshot.
