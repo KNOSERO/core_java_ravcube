@@ -1,6 +1,5 @@
 package com.ravcube.lib.stream.infrastructure.sse;
 
-import com.ravcube.lib.stream.application.ClientStreamLimitExceededException;
 import com.ravcube.lib.stream.infrastructure.config.ClientStreamProperties;
 import org.junit.jupiter.api.Test;
 
@@ -61,6 +60,18 @@ class ClientStreamRegistryTest {
                 IllegalArgumentException.class,
                 () -> registry.subscribe("claims", List.of())
         );
+    }
+
+    @Test
+    void olderVersionIsIgnoredAfterNewerVersion() {
+        final RecordingSseEmitter subscriber = new RecordingSseEmitter();
+        final ClientStreamRegistry registry = registry(subscriber);
+
+        registry.subscribe("claims", List.of("1"));
+        registry.publish("claims", "1", 42);
+        registry.publish("claims", "1", 41);
+
+        assertEquals(1, subscriber.eventCount());
     }
 
     @Test
