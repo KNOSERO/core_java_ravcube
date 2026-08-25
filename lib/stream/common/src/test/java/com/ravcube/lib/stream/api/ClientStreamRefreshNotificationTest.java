@@ -7,11 +7,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class ClientStreamRefreshNotificationTest {
 
     @Test
-    void notificationContainsChangedResourceIdentity() {
+    void notificationContainsChangedResourceVersion() {
         final ClientStreamRefreshNotification notification =
-                new ClientStreamRefreshNotification("claims", "1");
+                new ClientStreamRefreshNotification("1", 42);
 
-        assertEquals("claims", notification.resourceName());
         assertEquals("1", notification.resourceId());
+        assertEquals(42, notification.version());
     }
 }
