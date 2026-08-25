@@ -218,7 +218,7 @@ stream.addEventListener("refresh", async event => {
 
     renderClaim(await response.json());
 });
-`
+```
 
 Powiadomienie SSE ma format:
 
