@@ -11,11 +11,11 @@ zwykłe API REST.
 
 Aplikacja korzysta z publicznego modułu:
 
-`kotlin
+```kotlin
 dependencies {
     implementation(project(":lib:stream:api"))
 }
-`
+```
 
 Aplikacja nie musi zależeć bezpośrednio od `stream:common` ani
 `stream:core`.
@@ -25,7 +25,7 @@ Aplikacja nie musi zależeć bezpośrednio od `stream:common` ani
 Transport odświeżenia Stream działa przez Kafka. Należy aktywować profil
 `kafka` oraz ustawić stabilną nazwę serwisu:
 
-`yaml
+```yaml
 spring:
   profiles:
     active: kafka
@@ -36,7 +36,7 @@ ravcube:
       service-name: claims-service
       # Opcjonalne. W Kubernetes powinno być unikalne dla każdego poda.
       instance-id: pod-1
-`
+```
 
 `service-name` musi być takie samo dla wszystkich podów jednego serwisu i
 różne dla innych serwisów. `instance-id` musi być unikalne dla każdego poda.
@@ -53,7 +53,7 @@ Aplikacja dostarcza:
 
 ### Subskrypcja i odczyt
 
-`javascript
+```javascript
 const stream = new EventSource("/streams/claims?ids=123&ids=456");
 
 stream.addEventListener("refresh", async event => {
@@ -67,7 +67,7 @@ stream.addEventListener("refresh", async event => {
 
     renderClaim(await response.json());
 });
-`
+```
 
 Stream nie zna ścieżki REST aplikacji. Odpowiada wyłącznie za subskrypcję i
 powiadomienie o zmianie. Identyfikator nie jest traktowany przez ten moduł jako
@@ -83,17 +83,17 @@ Subskrypcja określa:
 
 Jeden zasób:
 
-`http
+```http
 GET /streams/claims/123
 Accept: text/event-stream
-`
+```
 
 Kilka zasobów:
 
-`http
+```http
 GET /streams/claims?ids=123&ids=456
 Accept: text/event-stream
-`
+```
 
 Oba warianty mają ten sam format eventu. Stream nie wysyła initial snapshotu.
 Klient powinien pobrać stan początkowy przez REST.
@@ -107,11 +107,11 @@ aktywnych subskrypcji.
 Po udanej zmianie biznesowej aplikacja publikuje event przez istniejący moduł
 `lib:event`:
 
-`java
+```java
 eventPublisher.publish(
         new ClientStreamRefreshEvent("claims", claimId, claimVersion)
 );
-`
+```
 
 Event jest obsługiwany dopiero po zakończeniu transakcji. Zawiera:
 
@@ -125,13 +125,13 @@ Nie zawiera payloadu zasobu. Wersja nie jest generowana przez Stream.
 
 Dla konfiguracji:
 
-`yaml
+```yaml
 ravcube:
   stream:
     kafka:
       service-name: claims-service
       instance-id: pod-1
-`
+```
 
 biblioteka używa:
 
@@ -148,16 +148,16 @@ Stream — zmiana ma dotyczyć wyłącznie właściwości `ravcube.stream.kafka`
 
 SSE ma jeden format payloadu:
 
-`text
+```text
 event: refresh
 data: {"resourceId":"123","version":42}
-`
+```
 
 Aktualny obiekt jest pobierany dopiero przez REST klienta.
 
 ## Ogólny przepływ
 
-`mermaid
+```mermaid
 sequenceDiagram
   participant Client as Klient
   participant SSE as Stream SSE
@@ -177,7 +177,7 @@ sequenceDiagram
   SSE-->>Client: notification resourceId + version
   Client->>API: GET aktualnego zasobu
   API-->>Client: aktualny obiekt
-`
+```
 
 Każdy pod otrzymuje event, ale Kafka nie jest magazynem stanu Stream. Po
 reconnect klient powinien pobrać aktualny stan przez REST.
@@ -187,14 +187,14 @@ reconnect klient powinien pobrać aktualny stan przez REST.
 Domyślna ścieżka to `/streams`. Można ją zmienić przez
 `ravcube.stream.path`.
 
-`yaml
+```yaml
 ravcube:
   stream:
     path: /streams
     timeout: PT30M
     max-ids-per-subscription: 100
     max-subscriptions: 1000
-`
+```
 
 ## Testowanie
 
