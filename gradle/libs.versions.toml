@@ -75,6 +75,7 @@ spring-data-elasticsearch = { module = "org.springframework.boot:spring-boot-sta
 spring-data-redis = { module = "org.springframework.boot:spring-boot-starter-data-redis", version.ref = "spring-boot" }
 spring-devtools = { module = "org.springframework.boot:spring-boot-devtools", version.ref = "spring-boot" }
 spring-context = { module = "org.springframework:spring-context", version.ref = "spring-framework" }
+spring-jcl = { module = "org.springframework:spring-jcl", version.ref = "spring-framework" }
 spring-kafka = { module = "org.springframework.kafka:spring-kafka", version.ref = "spring-kafka" }
 spring-test = { module = "org.springframework.boot:spring-boot-starter-test", version.ref = "spring-boot" }
 spring-tx = { module = "org.springframework:spring-tx", version.ref = "spring-framework" }
