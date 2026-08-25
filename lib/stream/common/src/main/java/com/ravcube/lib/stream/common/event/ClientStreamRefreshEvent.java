@@ -8,12 +8,16 @@ import java.util.Objects;
 @Topic("stream.resource.refresh")
 public record ClientStreamRefreshEvent(
         String resourceName,
-        String resourceId
+        String resourceId,
+        long version
 ) implements DomainEvent {
 
     public ClientStreamRefreshEvent {
         resourceName = requireText(resourceName, "resourceName");
         resourceId = requireText(resourceId, "resourceId");
+        if (version < 0) {
+            throw new IllegalArgumentException("version must not be negative");
+        }
     }
 
     @Override
