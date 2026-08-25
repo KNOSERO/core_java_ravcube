@@ -14,13 +14,14 @@ lib:stream:core
 
 The dependency direction is:
 
-```text
-application -> stream:api
-stream:api -> stream:common (api)
-stream:api -> stream:core (implementation)
-stream:core -> stream:common (implementation)
-stream:common -> lib:event:api
-stream:api -> lib:event:core
+```mermaid
+flowchart LR
+  APP["Application"] --> API["lib:stream:api"]
+  API -->|api| COMMON["lib:stream:common"]
+  API -->|implementation| CORE["lib:stream:core"]
+  CORE -->|implementation| COMMON
+  COMMON --> EVENT_API["lib:event:api"]
+  API --> EVENT_CORE["lib:event:core"]
 ```
 
 `lib:stream:common` contains all shared contracts: external read interfaces and
@@ -105,13 +106,31 @@ import com.ravcube.lib.stream.common.event.ClientStreamRefreshEvent;
 eventPublisher.publish(new ClientStreamRefreshEvent("policies.claims", claimId));
 ```
 
-`stream:core` registers the event publisher and listener using
+`stream:api` contains the event adapter and registers the listener using
 `DefaultCommitPublisher` and `DefaultCommitListener`. The listener receives the
-event after commit, loads the current resource, rechecks access for every SSE
-subscription, and sends one `refresh` event to matching resource ids.
+event after commit and delegates to `stream:core`, which loads the current
+resource, rechecks access for every SSE subscription, and sends one `refresh`
+event to matching resource ids.
 
 The event contains only `resourceName` and `resourceId`; the payload is loaded
 after commit and is not transported through the event bus.
+
+The refresh flow is:
+
+```mermaid
+sequenceDiagram
+  participant B as Business operation
+  participant P as lib:event publisher
+  participant L as stream:api listener
+  participant S as stream:core service
+  participant C as Matching SSE clients
+
+  B->>P: publish(resourceName, resourceId)
+  P-->>L: deliver after commit
+  L->>S: refresh(resourceName, resourceId)
+  S->>S: load resource and recheck authorization
+  S-->>C: send refresh event for matching id
+```
 
 ## HTTP endpoints
 
