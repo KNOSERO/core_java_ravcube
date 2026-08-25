@@ -77,28 +77,60 @@ should not own business policy.
 
 ## Testing Policy
 
-- Tests should be readable as behavior specifications.
-- Test observable behavior, public contracts, and integration boundaries rather
-  than private implementation details.
-- Prefer behavior names in tests, for example `shouldPublishRefreshEvent...`,
-  instead of names describing internal methods or data structures.
-- Prefer arrange-act-assert structure.
-- Use package and directory names that explain the test level and purpose, for
-  example `domain`, `integration`, `support`, `web`, `event`, or `update`.
-- Keep low-level test infrastructure in `support` packages.
-- Avoid repeating HTTP, container, serialization, or asynchronous plumbing inside
-  behavior-focused tests.
-- Unit tests should cover domain rules and small library contracts.
-- Integration tests should verify framework wiring and real boundaries.
-- Container tests should be used when behavior depends on a real external
-  dependency, such as PostgreSQL, Redis, Kafka, Elasticsearch, Keycloak, or
-  Eureka.
-- Do not use container tests to verify logic that can be tested with a fast
-  domain or contract test.
-- Keep container setup reusable and hidden behind test support modules or
-  `support` packages, so scenario tests stay focused on behavior.
-- Avoid arbitrary sleeps. Prefer await utilities, named helpers, or observable
-  readiness checks.
+- Treat tests as executable business and integration contracts. Use TDD in the
+  order red -> green -> refactor: write the smallest failing behavior test,
+  implement the minimum, then simplify the design.
+- Assert observable behavior through public boundaries. Do not test private
+  methods, fields, internal collections, implementation classes, or incidental
+  collaborator call counts.
+- Use short outcome-oriented names such as
+  `subscribedClientReceivesItsClaimUpdate`, `invalidIdsReturnBadRequest`, and
+  `eventIsPublishedAfterCommit`. Avoid `shouldCorrectlyHandle...` and names
+  copied from method or class names.
+- Prefer Arrange-Act-Assert or Given-When-Then consistently. Keep setup visible
+  and use focused domain helpers for plumbing only.
+- Mirror production packages in test sources. Use these levels only when they
+  represent a real boundary:
+
+  ```text
+  src/test/java/.../domain/          # pure rules, no Spring or transports
+  src/test/java/.../application/     # use cases with real objects and named fakes
+  src/test/java/.../web/             # HTTP contract and response behavior
+  src/test/java/.../event/           # event routing and commit/rollback behavior
+  src/test/java/.../integration/     # real external boundary
+  src/test/java/.../support/         # test app, clients, fakes, containers
+  ```
+
+- In `core`, test domain/application behavior and the owned technical boundary
+  only. For the stream module this means core tests cover SSE subscriptions,
+  routing, authorization, limits, cleanup, and emitted SSE behavior; they do
+  not use HTTP controllers or event publishers/listeners.
+- In `api`, test the HTTP and event boundaries with real Spring wiring. Use
+  `@SpringBootTest` plus MockMvc or a real HTTP client, real application
+  services, the real `ClientStreamRefreshListener`, and a real transaction
+  boundary. Do not use `@WebMvcTest` with mocked services or
+  `MockMvcBuilders.standaloneSetup` with Mockito.
+- Do not use Mockito, `@Mock`, `@MockBean`, or equivalent doubles as the default
+  in API, infrastructure, HTTP, SSE, event, messaging, persistence, or cache
+  tests. A mock can make a broken integration appear correct. Use real beans or
+  a named deterministic fake at a stable application port instead.
+- Use the project’s `test:*` modules and Testcontainers for external services
+  whose behavior matters: PostgreSQL, Redis, Kafka, Elasticsearch, Keycloak,
+  Eureka, or another real dependency. Verify serialization, connectivity,
+  retries, transactions, and routing against the running service.
+- Do not add a fake container just to satisfy a rule. The current stream event
+  path uses the in-process Spring `AFTER_COMMIT` transport, so its API test must
+  use real Spring event wiring and commit/rollback behavior. If the event path
+  later changes to Kafka or another external transport, add the corresponding
+  Testcontainers integration test and reuse its existing `test:*` module.
+- Do not use arbitrary sleeps. Use the project Awaitility helpers or wait for
+  an observable readiness/event condition.
+- Keep container setup, test applications, HTTP/SSE clients, and reusable fakes
+  in `support` or an existing `test:*` module. Scenario tests should contain
+  only domain setup, the public action, and observable assertions.
+- Before finishing, run the narrowest relevant test task, then a broader check
+  when practical. Never report tests as passing when they were not executed;
+  report missing Docker, Gradle, container, or network prerequisites exactly.
 
 ## Documentation Policy
 
