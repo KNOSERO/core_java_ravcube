@@ -20,6 +20,14 @@ class ClientStreamKafkaPropertiesTest {
     }
 
     @Test
+    void hostnameProvidesPodIdentityWhenNoOverrideIsConfigured() {
+        final ClientStreamKafkaProperties properties =
+                new ClientStreamKafkaProperties("claims-service", "", "claims-pod-7");
+
+        assertEquals("stream-refresh.claims-service.claims-pod-7", properties.consumerGroup());
+    }
+
+    @Test
     void differentServicesUseDifferentTopics() {
         final ClientStreamKafkaProperties claims =
                 new ClientStreamKafkaProperties("claims-service", "pod-1", "");
