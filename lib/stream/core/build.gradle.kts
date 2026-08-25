@@ -1,5 +1,6 @@
 plugins {
     `java-library`
+    alias(libs.plugins.kotlin.jvm)
 }
 
 dependencies {
@@ -9,4 +10,8 @@ dependencies {
 
     testImplementation(libs.junit.jupiter)
     runtimeOnly(libs.junit.launcher)
+}
+
+kotlin {
+    jvmToolchain(21)
 }
