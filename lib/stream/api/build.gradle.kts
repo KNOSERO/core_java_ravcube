@@ -9,6 +9,7 @@ dependencies {
     implementation(libs.spring.context)
     implementation(libs.spring.web)
 
+    testImplementation(libs.spring.test)
     testImplementation(libs.junit.jupiter)
     runtimeOnly(libs.junit.launcher)
 }

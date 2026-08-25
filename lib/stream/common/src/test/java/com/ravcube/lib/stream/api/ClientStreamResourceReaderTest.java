@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class ClientStreamResourceReaderTest {
 
     @Test
-    void shouldLoadSingleResourceById() {
+    void resourceIsLoadedById() {
         final ClientStreamResourceReader<String> stream = new ClientStreamResourceReader<>() {
             @Override
             public String resourceName() {

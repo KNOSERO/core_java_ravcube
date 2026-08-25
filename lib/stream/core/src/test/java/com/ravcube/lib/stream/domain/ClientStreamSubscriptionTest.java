@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ClientStreamSubscriptionTest {
 
     @Test
-    void shouldAcceptOnlyMatchingResourceId() {
+    void subscriptionAcceptsOnlyMatchingResourceId() {
         final ClientStreamSubscription subscription = new ClientStreamSubscription(
                 "claims",
                 Set.of("1", "2")

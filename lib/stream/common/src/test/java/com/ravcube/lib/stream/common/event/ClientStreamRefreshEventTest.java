@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class ClientStreamRefreshEventTest {
 
     @Test
-    void shouldBuildStableEventKey() {
+    void eventKeyUsesResourceAndId() {
         final ClientStreamRefreshEvent event = new ClientStreamRefreshEvent("claims", "1");
 
         assertEquals("claims:1", event.getKey());

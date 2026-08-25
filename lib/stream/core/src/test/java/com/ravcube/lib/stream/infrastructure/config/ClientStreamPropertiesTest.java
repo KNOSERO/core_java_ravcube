@@ -9,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class ClientStreamPropertiesTest {
 
     @Test
-    void shouldKeepConfiguredTimeout() {
+    void configuredTimeoutIsKept() {
         final ClientStreamProperties properties = new ClientStreamProperties(
                 Duration.ofMinutes(10),
                 10,

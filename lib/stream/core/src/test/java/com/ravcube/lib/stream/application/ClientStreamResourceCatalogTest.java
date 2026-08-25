@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class ClientStreamResourceCatalogTest {
 
     @Test
-    void shouldRejectDuplicateResourceNames() {
+    void duplicateResourceNamesAreRejected() {
         final ClientStreamResourceReader<String> first = stream("claims");
         final ClientStreamResourceReader<String> second = stream("claims");
 
