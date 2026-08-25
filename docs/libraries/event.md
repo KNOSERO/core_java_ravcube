@@ -39,6 +39,28 @@ class PolicyCreatedPublisher extends DefaultCommitPublisher<PolicyCreated> {
 }
 ```
 
+## Scoped Kafka topic
+
+The default Kafka publisher uses the topic from `Topic`. A specialized
+publisher may override `baseTopic(event)` when one event family must be
+isolated per service:
+
+`java
+@Component
+@Profile("kafka")
+final class ServiceRefreshPublisher extends DefaultKafkaPublisher<ServiceRefresh> {
+
+    @Override
+    protected String baseTopic(ServiceRefresh event) {
+        return "service.refresh." + serviceName;
+    }
+}
+`
+
+The publisher still uses the Kafka commit suffix. The matching listener must
+subscribe to the same resolved topic. This extension is opt-in and does not
+change the topic resolution of existing publishers.
+
 ## Listener example
 
 ```java
