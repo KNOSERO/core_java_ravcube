@@ -25,7 +25,8 @@ final class ClientStreamRefreshListener {
 
     @KafkaListener(
             topics = "#{__listener.commitTopic()}",
-            groupId = "#{__listener.consumerGroup()}"
+            groupId = "#{__listener.consumerGroup()}",
+            containerFactory = "clientStreamKafkaListenerContainerFactory"
     )
     public void on(ClientStreamRefreshEvent event) {
         service.refresh(event.resourceName(), event.resourceId(), event.version());
