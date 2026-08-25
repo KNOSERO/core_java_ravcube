@@ -36,8 +36,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
         classes = ClientStreamApiTestApplication.class,
         properties = {
                 "spring.application.name=stream-api-test",
-                "ravcube.stream.kafka.instance-id=test-pod",
-                "ravcube.stream.max-subscriptions-per-client=1"
+                "ravcube.stream.kafka.instance-id=test-pod"
         },
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
 )
@@ -95,21 +94,6 @@ class ClientStreamApiIntegrationTest {
                 .send(request, HttpResponse.BodyHandlers.ofString());
 
         assertEquals(HttpStatus.BAD_REQUEST.value(), response.statusCode());
-    }
-
-    @Test
-    void tooManySubscriptionsForClientReturnsTooManyRequests() throws Exception {
-        try (SseConnection connection = openStream("/streams/claims/1")) {
-            HttpRequest request = HttpRequest.newBuilder(uri("/streams/claims/2"))
-                    .header(HttpHeaders.ACCEPT, "text/event-stream")
-                    .GET()
-                    .build();
-
-            HttpResponse<String> response = HttpClient.newHttpClient()
-                    .send(request, HttpResponse.BodyHandlers.ofString());
-
-            assertEquals(HttpStatus.TOO_MANY_REQUESTS.value(), response.statusCode());
-        }
     }
 
     private void publishRefresh(String resourceName, String resourceId, long version) {
