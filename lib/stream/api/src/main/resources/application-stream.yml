@@ -4,3 +4,4 @@ ravcube:
     timeout: PT30M
     max-ids-per-subscription: 100
     max-subscriptions: 1000
+    max-pending-events-per-subscription: 100
