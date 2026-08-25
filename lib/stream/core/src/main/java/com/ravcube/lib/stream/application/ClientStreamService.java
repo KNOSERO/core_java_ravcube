@@ -25,7 +25,7 @@ public final class ClientStreamService {
         return subscribe(resourceName, List.of(resourceId));
     }
 
-    public void refresh(String resourceName, String resourceId) {
-        registry.publish(resourceName, resourceId);
+    public void refresh(String resourceName, String resourceId, long version) {
+        registry.publish(resourceName, resourceId, version);
     }
 }
