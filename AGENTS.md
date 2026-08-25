@@ -103,8 +103,8 @@ should not own business policy.
 
 - In `core`, test domain/application behavior and the owned technical boundary
   only. For the stream module this means core tests cover SSE subscriptions,
-  routing, authorization, limits, cleanup, and emitted SSE behavior; they do
-  not use HTTP controllers or event publishers/listeners.
+  routing, limits, cleanup, and emitted SSE behavior; they do not use HTTP
+  controllers, Kafka, or event publishers/listeners.
 - In `api`, test the HTTP and event boundaries with real Spring wiring. Use
   `@SpringBootTest` plus MockMvc or a real HTTP client, real application
   services, the real `ClientStreamRefreshListener`, and a real transaction
@@ -118,11 +118,11 @@ should not own business policy.
   whose behavior matters: PostgreSQL, Redis, Kafka, Elasticsearch, Keycloak,
   Eureka, or another real dependency. Verify serialization, connectivity,
   retries, transactions, and routing against the running service.
-- Do not add a fake container just to satisfy a rule. The current stream event
-  path uses the in-process Spring `AFTER_COMMIT` transport, so its API test must
-  use real Spring event wiring and commit/rollback behavior. If the event path
-  later changes to Kafka or another external transport, add the corresponding
-  Testcontainers integration test and reuse its existing `test:*` module.
+- Do not add a fake container just to satisfy a rule. The stream event path
+  uses a service-scoped Kafka topic and a pod-specific consumer group, so its
+  API test must use real Spring wiring, a real transaction boundary, and the
+  existing `test:kafka` Testcontainers module. Verify the HTTP -> event
+  publisher -> Kafka -> listener -> SSE behavior.
 - Do not use arbitrary sleeps. Use the project Awaitility helpers or wait for
   an observable readiness/event condition.
 - Keep container setup, test applications, HTTP/SSE clients, and reusable fakes
