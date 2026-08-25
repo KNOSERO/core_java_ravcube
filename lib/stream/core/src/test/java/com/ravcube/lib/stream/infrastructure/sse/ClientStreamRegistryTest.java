@@ -1,5 +1,6 @@
 package com.ravcube.lib.stream.infrastructure.sse;
 
+import com.ravcube.lib.stream.common.ClientStreamCapacityExceededException;
 import com.ravcube.lib.stream.infrastructure.config.ClientStreamProperties;
 import org.junit.jupiter.api.Test;
 
@@ -75,7 +76,7 @@ class ClientStreamRegistryTest {
     }
 
     @Test
-    void subscriptionLimitsAreEnforced() {
+    void idAndGlobalSubscriptionLimitsUseCapacityException() {
         final ClientStreamProperties properties = new ClientStreamProperties(
                 Duration.ofMinutes(10),
                 1,
@@ -87,13 +88,37 @@ class ClientStreamRegistryTest {
         );
 
         assertThrows(
-                ClientStreamLimitExceededException.class,
+                ClientStreamCapacityExceededException.class,
                 () -> registry.subscribe("claims", List.of("1", "2"))
         );
         registry.subscribe("claims", List.of("1"));
         assertThrows(
-                ClientStreamLimitExceededException.class,
+                ClientStreamCapacityExceededException.class,
                 () -> registry.subscribe("claims", List.of("2"))
         );
+    }
+
+    @Test
+    void clientSubscriptionLimitIsEnforcedIndependently() {
+        final ClientStreamProperties properties = new ClientStreamProperties(
+                Duration.ofMinutes(10),
+                10,
+                10,
+                1,
+                100,
+                Duration.ofMinutes(1)
+        );
+        final ClientStreamRegistry registry = new ClientStreamRegistry(
+                properties,
+                timeout -> new RecordingSseEmitter()
+        );
+
+        registry.subscribe("claims", List.of("1"), "client-a");
+
+        assertThrows(
+                ClientStreamCapacityExceededException.class,
+                () -> registry.subscribe("claims", List.of("2"), "client-a")
+        );
+        registry.subscribe("claims", List.of("2"), "client-b");
     }
 }
