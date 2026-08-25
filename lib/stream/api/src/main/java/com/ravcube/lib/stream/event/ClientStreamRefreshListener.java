@@ -18,6 +18,6 @@ final class ClientStreamRefreshListener extends DefaultCommitListener<ClientStre
 
     @Override
     public void on(ClientStreamRefreshEvent event) {
-        service.refresh(event.resourceName(), event.resourceId());
+        service.refresh(event.resourceName(), event.resourceId(), event.version());
     }
 }
