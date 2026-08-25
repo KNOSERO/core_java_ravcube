@@ -18,7 +18,7 @@ public final class ClientStreamKafkaProperties {
     private final String instanceId;
 
     public ClientStreamKafkaProperties(
-            @Value("${ravcube.stream.kafka.service-name}") String serviceName,
+            @Value("${ravcube.stream.kafka.service-name:${spring.application.name:}}") String serviceName,
             @Value("${ravcube.stream.kafka.instance-id:}") String configuredInstanceId,
             @Value("${HOSTNAME:}") String hostname
     ) {
