@@ -28,6 +28,7 @@ import java.util.concurrent.TimeoutException;
 
 import static com.ravcube.test.kafka.KafkaTestProfiles.TEST_KAFKA_PROFILE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ActiveProfiles({"stream", "stream-test", "kafka", TEST_KAFKA_PROFILE})
@@ -72,6 +73,14 @@ class ClientStreamApiIntegrationTest {
                     "data:{\"resourceId\":\"1\",\"version\":42}"
             ));
         }
+    }
+
+    @Test
+    void refreshOutsideTransactionIsRejected() {
+        assertThrows(
+                IllegalStateException.class,
+                () -> eventPublisher.publish(new ClientStreamRefreshEvent("claims", "1", 42))
+        );
     }
 
     @Test
