@@ -1,5 +1,11 @@
-package com.ravcube.lib.stream;
+package com.ravcube.lib.stream.infrastructure.sse;
 
+import com.ravcube.lib.stream.api.ClientStreamAccess;
+import com.ravcube.lib.stream.api.ClientStreamAccessDeniedException;
+import com.ravcube.lib.stream.api.ClientStreamAuthorizer;
+import com.ravcube.lib.stream.application.ClientStreamLimitExceededException;
+import com.ravcube.lib.stream.domain.ClientStreamSubscription;
+import com.ravcube.lib.stream.infrastructure.config.ClientStreamProperties;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -25,7 +31,7 @@ public final class ClientStreamRegistry {
     private final int maxSubscriptions;
     private final ClientStreamAuthorizer authorizer;
     private final LongFunction<SseEmitter> emitterFactory;
-    private final CopyOnWriteArrayList<Subscription> subscriptions = new CopyOnWriteArrayList<>();
+    private final CopyOnWriteArrayList<RegisteredSubscription> subscriptions = new CopyOnWriteArrayList<>();
 
     public ClientStreamRegistry(
             ClientStreamProperties properties,
@@ -65,7 +71,7 @@ public final class ClientStreamRegistry {
             throw new ClientStreamAccessDeniedException(validatedResourceName);
         }
 
-        return register(new Subscription(validatedResourceName, normalizedIds, access, null));
+        return register(new ClientStreamSubscription(validatedResourceName, normalizedIds, access));
     }
 
     public void publish(String resourceName, String resourceId, Object payload) {
@@ -78,7 +84,7 @@ public final class ClientStreamRegistry {
         );
     }
 
-    void assertAuthorized(String resourceName, String resourceId) {
+    public void assertAuthorized(String resourceName, String resourceId) {
         final String validatedResourceName = requireText(resourceName, "resourceName");
         final Set<String> normalizedIds = normalizeIds(List.of(resourceId), maxIdsPerSubscription);
         final String validatedResourceId = normalizedIds.iterator().next();
@@ -101,7 +107,7 @@ public final class ClientStreamRegistry {
                 emitter,
                 "emitter must not be null"
         );
-        final Subscription subscription = subscriptions.stream()
+        final RegisteredSubscription subscription = subscriptions.stream()
                 .filter(candidate -> candidate.emitter() == validatedEmitter)
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("emitter is not registered"));
@@ -116,12 +122,12 @@ public final class ClientStreamRegistry {
         send(validatedEmitter, Objects.requireNonNull(payload, "payload must not be null"));
     }
 
-    private SseEmitter register(Subscription subscription) {
+    private SseEmitter register(ClientStreamSubscription subscription) {
         final SseEmitter emitter = Objects.requireNonNull(
                 emitterFactory.apply(timeout.toMillis()),
                 "emitterFactory returned null"
         );
-        final Subscription registered = subscription.withEmitter(emitter);
+        final RegisteredSubscription registered = RegisteredSubscription.of(subscription, emitter);
         synchronized (subscriptions) {
             if (subscriptions.size() >= maxSubscriptions) {
                 throw new ClientStreamLimitExceededException(
@@ -141,7 +147,7 @@ public final class ClientStreamRegistry {
         return emitter;
     }
 
-    private void publish(Predicate<Subscription> selector, Object payload) {
+    private void publish(Predicate<RegisteredSubscription> selector, Object payload) {
         Objects.requireNonNull(payload, "payload must not be null");
         subscriptions.stream()
                 .filter(selector)
@@ -163,7 +169,7 @@ public final class ClientStreamRegistry {
         subscriptions.removeIf(subscription -> subscription.emitter() == emitter);
     }
 
-    void unsubscribe(SseEmitter emitter) {
+    public void unsubscribe(SseEmitter emitter) {
         remove(Objects.requireNonNull(emitter, "emitter must not be null"));
     }
 
@@ -203,23 +209,21 @@ public final class ClientStreamRegistry {
         return value;
     }
 
-    private record Subscription(
-            String resourceName,
-            Set<String> resourceIds,
-            ClientStreamAccess access,
+    private record RegisteredSubscription(
+            ClientStreamSubscription subscription,
             SseEmitter emitter
     ) {
 
-        Subscription withEmitter(SseEmitter registeredEmitter) {
-            return new Subscription(resourceName, resourceIds, access, registeredEmitter);
+        static RegisteredSubscription of(
+                ClientStreamSubscription subscription,
+                SseEmitter emitter
+        ) {
+            return new RegisteredSubscription(subscription, emitter);
         }
 
         boolean accepts(String name, String id) {
-            if (!resourceName.equals(name) || !resourceIds.contains(id)) {
-                return false;
-            }
             try {
-                return access.allows(id);
+                return subscription.accepts(name, id);
             } catch (RuntimeException ignored) {
                 return false;
             }

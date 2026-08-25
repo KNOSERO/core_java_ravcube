@@ -1,4 +1,4 @@
-package com.ravcube.lib.stream;
+package com.ravcube.lib.stream.infrastructure.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Autowired;

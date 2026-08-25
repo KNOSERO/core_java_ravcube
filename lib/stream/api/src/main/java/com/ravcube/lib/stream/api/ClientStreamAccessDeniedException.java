@@ -1,4 +1,4 @@
-package com.ravcube.lib.stream;
+package com.ravcube.lib.stream.api;
 
 public final class ClientStreamAccessDeniedException extends RuntimeException {
 

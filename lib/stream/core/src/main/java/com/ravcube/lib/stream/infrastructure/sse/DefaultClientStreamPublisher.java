@@ -1,5 +1,6 @@
-package com.ravcube.lib.stream;
+package com.ravcube.lib.stream.infrastructure.sse;
 
+import com.ravcube.lib.stream.api.ClientStreamPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;

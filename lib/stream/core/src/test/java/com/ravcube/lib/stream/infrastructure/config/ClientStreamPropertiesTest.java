@@ -1,4 +1,4 @@
-package com.ravcube.lib.stream;
+package com.ravcube.lib.stream.infrastructure.config;
 
 import org.junit.jupiter.api.Test;
 

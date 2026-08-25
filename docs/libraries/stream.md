@@ -15,6 +15,30 @@ lib:stream:core
 and authorization contracts. `lib:stream:core` contains the in-memory SSE
 registry, Spring MVC endpoints, and the default publisher.
 
+The source is intentionally split by responsibility:
+
+```text
+lib/stream/api/src/main/java/com/ravcube/lib/stream/api
+  ClientRestResourceStream.java       # public resource/update contract
+  ClientStreamPublisher.java          # public refresh contract
+  ClientStreamAuthorizer.java         # public access contract
+
+lib/stream/core/src/main/java/com/ravcube/lib/stream
+  domain/                              # subscription rules, no Spring/SSE
+  application/                         # resource catalog and update use case
+  infrastructure/config/              # configurable runtime properties
+  infrastructure/sse/                 # SseEmitter registry and publisher
+  web/                                 # HTTP/SSE transport adapter
+```
+
+Tests follow the same package structure. A class belongs in the smallest
+package that owns its responsibility; do not place unrelated domain, transport,
+configuration, and infrastructure classes in the root package.
+
+The public API package is `com.ravcube.lib.stream.api`. Existing consumers that
+imported contracts from `com.ravcube.lib.stream` must update those imports after
+this package reorganization.
+
 ## Dependency
 
 Add the implementation module to a Spring application:
@@ -33,6 +57,9 @@ A resource handler provides the resource name and loads the current resource by
 id. Its `update(id)` method loads the resource and publishes one update:
 
 ```java
+import com.ravcube.lib.stream.api.ClientRestResourceStream;
+import com.ravcube.lib.stream.api.ClientStreamPublisher;
+
 @Component
 final class PolicyClaimStream implements ClientRestResourceStream<PolicyClaimDto> {
 

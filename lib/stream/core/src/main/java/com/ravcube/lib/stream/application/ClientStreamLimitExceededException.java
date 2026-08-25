@@ -1,4 +1,4 @@
-package com.ravcube.lib.stream;
+package com.ravcube.lib.stream.application;
 
 public final class ClientStreamLimitExceededException extends RuntimeException {
 

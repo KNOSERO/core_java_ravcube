@@ -1,5 +1,6 @@
-package com.ravcube.lib.stream;
+package com.ravcube.lib.stream.infrastructure.sse;
 
+import com.ravcube.lib.stream.infrastructure.config.ClientStreamProperties;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
