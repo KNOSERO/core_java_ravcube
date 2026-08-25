@@ -137,7 +137,6 @@ Publiczny moduł `stream:api` zawiera domyślny plik profilu
 `application-stream.yml`. Po aktywowaniu profilu `stream` Spring ładuje z niego
 poniższe wartości:
 
-
 ```yaml
 spring:
   application:
@@ -155,7 +154,7 @@ ravcube:
     max-subscriptions: 1000
 ```
 
-Wartości fallback w komponentach zachowują kompatybilność także wtedy, gdy aplikacja nie aktywuje profilu `stream`, ale zalecane jest jawne aktywowanie profilu dla używanego modułu.
+Komponenty zachowują te same wartości fallback także wtedy, gdy aplikacja nie aktywuje profilu `stream`. Zalecane jest jednak jawne aktywowanie profilu dla używanego modułu.
 
 Biblioteka automatycznie:
 
