@@ -1,6 +1,6 @@
 package com.ravcube.lib.event.kafka;
 
-import com.ravcube.lib.event.enums.EventSource;
+import com.ravcube.lib.event.routing.EventSource;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 

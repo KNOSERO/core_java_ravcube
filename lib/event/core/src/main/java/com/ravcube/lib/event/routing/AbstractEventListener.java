@@ -1,19 +1,18 @@
-package com.ravcube.lib.event.inteface;
+package com.ravcube.lib.event.routing;
 
 import com.ravcube.lib.event.DomainEvent;
-import com.ravcube.lib.event.enums.EventSource;
 import org.springframework.core.ResolvableType;
 
-public interface AbstractListener<E extends DomainEvent> {
+public interface AbstractEventListener<E extends DomainEvent> {
 
     EventSource source();
 
     void on(E event);
 
     @SuppressWarnings("unchecked")
-    default Class<E> domainClass() {
+    default Class<E> eventType() {
         return (Class<E>) ResolvableType.forClass(getClass())
-                .as(AbstractListener.class)
+                .as(AbstractEventListener.class)
                 .getGeneric(0)
                 .resolve();
     }

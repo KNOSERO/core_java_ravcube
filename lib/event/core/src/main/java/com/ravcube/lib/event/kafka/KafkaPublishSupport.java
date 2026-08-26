@@ -1,7 +1,7 @@
 package com.ravcube.lib.event.kafka;
 
 import com.ravcube.lib.event.DomainEvent;
-import com.ravcube.lib.event.enums.EventSource;
+import com.ravcube.lib.event.routing.EventSource;
 import com.ravcube.lib.logger.Logger;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.springframework.kafka.core.KafkaTemplate;

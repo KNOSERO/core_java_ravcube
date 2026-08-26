@@ -1,10 +1,10 @@
 package com.ravcube.lib.event.publisher
 
-import com.ravcube.lib.event.inteface.AbstractPublisher
-import com.ravcube.lib.event.enums.EventSource
+import com.ravcube.lib.event.routing.AbstractEventPublisher
+import com.ravcube.lib.event.routing.EventSource
 import com.ravcube.lib.event.SampleEvent
 
-class AnotherSampleEventPublisher : AbstractPublisher<SampleEvent> {
+class AnotherSampleEventPublisher : AbstractEventPublisher<SampleEvent> {
     var calls: Int = 0
         private set
 

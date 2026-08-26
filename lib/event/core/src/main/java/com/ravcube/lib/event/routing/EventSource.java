@@ -1,4 +1,4 @@
-package com.ravcube.lib.event.enums;
+package com.ravcube.lib.event.routing;
 
 public enum EventSource {
     SPRING_AFTER_COMMIT("", ""),
@@ -15,6 +15,6 @@ public enum EventSource {
     }
 
     public String formatTopic(String topic) {
-        return this.prefix + topic + this.suffix;
+        return prefix + topic + suffix;
     }
 }

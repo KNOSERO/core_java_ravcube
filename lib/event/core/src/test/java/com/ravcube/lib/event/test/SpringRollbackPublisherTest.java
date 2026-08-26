@@ -1,6 +1,6 @@
 package com.ravcube.lib.event.test;
 
-import com.ravcube.lib.event.inteface.EventPublisher;
+import com.ravcube.lib.event.api.EventPublisher;
 import com.ravcube.lib.event.config.TestApplication;
 import com.ravcube.lib.event.domain.SpringDomainEvent;
 import com.ravcube.lib.event.listener.SpringCommitListener;
@@ -32,7 +32,7 @@ class SpringRollbackPublisherTest {
     }
 
     @Test
-    void shouldHandleEventAfterRollback() {
+    void eventIsHandledAfterRollback() {
         SpringDomainEvent event = new SpringDomainEvent(UUID.randomUUID(), "rollback");
 
         transactionTemplate.executeWithoutResult(status -> {
@@ -44,7 +44,7 @@ class SpringRollbackPublisherTest {
     }
 
     @Test
-    void shouldNotHandleEventWhenTransactionCommits() {
+    void eventIsNotHandledAfterCommit() {
         SpringDomainEvent event = new SpringDomainEvent(UUID.randomUUID(), "commit");
 
         transactionTemplate.executeWithoutResult(status -> publisher.publish(event));
@@ -53,7 +53,7 @@ class SpringRollbackPublisherTest {
     }
 
     @Test
-    void shouldNotHandleAnyEventBeforeTransactionCompletes() {
+    void eventIsHandledAfterTransactionCompletes() {
         SpringDomainEvent event = new SpringDomainEvent(UUID.randomUUID(), "in-progress");
 
         transactionTemplate.executeWithoutResult(status -> {

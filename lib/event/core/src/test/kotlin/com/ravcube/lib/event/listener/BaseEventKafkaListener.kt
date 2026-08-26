@@ -1,9 +1,9 @@
 package com.ravcube.lib.event
 
-import com.ravcube.lib.event.enums.EventSource
-import com.ravcube.lib.event.inteface.AbstractListener
+import com.ravcube.lib.event.routing.AbstractEventListener
+import com.ravcube.lib.event.routing.EventSource
 
-class BaseEventKafkaListener : AbstractListener<BaseEvent> {
+class BaseEventKafkaListener : AbstractEventListener<BaseEvent> {
     var calls: Int = 0
         private set
 

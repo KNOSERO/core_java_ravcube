@@ -1,10 +1,10 @@
 package com.ravcube.lib.event.listener;
 
-import com.ravcube.lib.event.inteface.AbstractListener;
 import com.ravcube.lib.event.DomainEvent;
-import com.ravcube.lib.event.enums.EventSource;
+import com.ravcube.lib.event.routing.AbstractEventListener;
+import com.ravcube.lib.event.routing.EventSource;
 
-public abstract class DefaultKafkaCommitListener<E extends DomainEvent> implements AbstractListener<E> {
+public abstract class DefaultKafkaCommitListener<E extends DomainEvent> implements AbstractEventListener<E> {
 
     @Override
     public final EventSource source() {

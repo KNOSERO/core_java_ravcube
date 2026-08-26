@@ -13,8 +13,9 @@ Use this page to find the module that provides the capability you need.
 | `lib:data` | Generic JPA/QueryDSL/Entity View support. | A JPA service follows common repository patterns. |
 | `lib:search:api` | Search-facing contracts. | Code needs search abstractions without depending on Elasticsearch infrastructure. |
 | `lib:search:core` | Elasticsearch search services and query helpers. | A module needs full-text or indexed document search. |
-| `lib:event:api` | Domain event contracts. | A module publishes or consumes typed domain events. |
-| `lib:event:core` | Spring/Kafka event infrastructure. | Events must be routed through Spring or Kafka. |
+| `lib:event:common` | Typed event contracts. | A module defines or shares `DomainEvent` types without Spring. |
+| `lib:event:api` | Event publication API. | Application code publishes typed events. |
+| `lib:event:core` | Spring/Kafka event routing and infrastructure. | Events must be delivered after a transaction through Spring or Kafka. |
 | `lib:stream:api` | Client stream abstractions. | A feature exposes resource or collection updates. |
 | `lib:stream:core` | SSE stream implementation. | A Spring service exposes server-sent events. |
 | `lib:security:api` | Shared security context and Keycloak client contract. | Code needs roles, claims, or auth client API. |

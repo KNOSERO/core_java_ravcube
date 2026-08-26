@@ -2,7 +2,7 @@ package com.ravcube.lib.event.test;
 
 import com.ravcube.lib.event.config.TestApplication;
 import com.ravcube.lib.event.domain.KafkaDomainEvent;
-import com.ravcube.lib.event.inteface.EventPublisher;
+import com.ravcube.lib.event.api.EventPublisher;
 import com.ravcube.lib.event.listener.KafkaCommitListener;
 import com.ravcube.lib.event.listener.KafkaRollbackListener;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,7 +41,7 @@ class KafkaRollbackPublisherTest {
     }
 
     @Test
-    void shouldPublishAndConsumeKafkaEventAfterRollback() {
+    void eventIsHandledAfterRollback() {
         KafkaDomainEvent event = new KafkaDomainEvent(UUID.randomUUID(), "rollback");
 
         transactionTemplate.executeWithoutResult(status -> {
@@ -54,7 +54,7 @@ class KafkaRollbackPublisherTest {
     }
 
     @Test
-    void shouldNotHandleEventWhenTransactionCommits() {
+    void eventIsNotHandledAfterCommit() {
         KafkaDomainEvent event = new KafkaDomainEvent(UUID.randomUUID(), "commit");
 
         transactionTemplate.executeWithoutResult(status -> publisher.publish(event));
@@ -63,7 +63,7 @@ class KafkaRollbackPublisherTest {
     }
 
     @Test
-    void shouldNotHandleAnyEventBeforeTransactionCompletes() {
+    void eventIsHandledAfterTransactionCompletes() {
         KafkaDomainEvent event = new KafkaDomainEvent(UUID.randomUUID(), "in-progress");
 
         transactionTemplate.executeWithoutResult(status -> {

@@ -1,11 +1,10 @@
 package com.ravcube.lib.event.listener;
 
-import com.ravcube.lib.event.inteface.AbstractListener;
 import com.ravcube.lib.event.DomainEvent;
-import com.ravcube.lib.event.inteface.EventListener;
-import com.ravcube.lib.event.enums.EventSource;
-
-import com.ravcube.lib.event.StorageListener;
+import com.ravcube.lib.event.routing.AbstractEventListener;
+import com.ravcube.lib.event.routing.EventListenerRegistry;
+import com.ravcube.lib.event.routing.EventRouter;
+import com.ravcube.lib.event.routing.EventSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -15,25 +14,25 @@ import java.util.List;
 public class ConfigRoutingEventListener {
 
     @Bean
-    public EventListener routingEventListener(List<AbstractListener<? extends DomainEvent>> listeners) {
+    public EventRouter eventRouter(List<AbstractEventListener<? extends DomainEvent>> listeners) {
         return new RoutingEventListener(listeners);
     }
 
-    final class RoutingEventListener implements EventListener {
-        private final StorageListener storage;
+    final class RoutingEventListener implements EventRouter {
+        private final EventListenerRegistry listeners;
 
-        RoutingEventListener(List<AbstractListener<? extends DomainEvent>> listeners) {
-            this.storage = StorageListener.of(listeners);
+        RoutingEventListener(List<AbstractEventListener<? extends DomainEvent>> listeners) {
+            this.listeners = EventListenerRegistry.of(listeners);
         }
 
         @Override
         public void on(EventSource source, DomainEvent event) {
-            storage.on(source, event);
+            listeners.on(source, event);
         }
 
         @Override
-        public List<String> getTopics(EventSource source) {
-            return storage.getTopics(source);
+        public List<String> topics(EventSource source) {
+            return listeners.topics(source);
         }
     }
 }

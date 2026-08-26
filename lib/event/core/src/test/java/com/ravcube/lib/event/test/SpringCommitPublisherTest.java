@@ -1,6 +1,6 @@
 package com.ravcube.lib.event.test;
 
-import com.ravcube.lib.event.inteface.EventPublisher;
+import com.ravcube.lib.event.api.EventPublisher;
 import com.ravcube.lib.event.config.TestApplication;
 import com.ravcube.lib.event.listener.SpringCommitAuditListener;
 import com.ravcube.lib.event.domain.SpringDomainEvent;
@@ -34,7 +34,7 @@ class SpringCommitPublisherTest {
     }
 
     @Test
-    void shouldHandleEventAfterCommit() {
+    void eventIsHandledAfterCommit() {
         SpringDomainEvent event = new SpringDomainEvent(UUID.randomUUID(), "commit");
 
         transactionTemplate.executeWithoutResult(status -> publisher.publish(event));
@@ -43,7 +43,7 @@ class SpringCommitPublisherTest {
     }
 
     @Test
-    void shouldInvokeEachCommitListenerExactlyOnceAfterCommit() {
+    void everyCommitListenerReceivesTheEvent() {
         SpringDomainEvent event = new SpringDomainEvent(UUID.randomUUID(), "commit-two-listeners");
 
         transactionTemplate.executeWithoutResult(status -> publisher.publish(event));
@@ -53,7 +53,7 @@ class SpringCommitPublisherTest {
     }
 
     @Test
-    void shouldNotHandleEventWhenTransactionRollsBack() {
+    void eventIsNotHandledAfterRollback() {
         SpringDomainEvent event = new SpringDomainEvent(UUID.randomUUID(), "rollback");
 
         transactionTemplate.executeWithoutResult(status -> {
@@ -65,7 +65,7 @@ class SpringCommitPublisherTest {
     }
 
     @Test
-    void shouldNotHandleAnyEventBeforeTransactionCompletes() {
+    void eventIsHandledAfterTransactionCompletes() {
         SpringDomainEvent event = new SpringDomainEvent(UUID.randomUUID(), "in-progress");
 
         transactionTemplate.executeWithoutResult(status -> {

@@ -1,7 +1,7 @@
 package com.ravcube.lib.event.publisher;
 
 import com.ravcube.lib.event.DomainEvent;
-import com.ravcube.lib.event.enums.EventSource;
+import com.ravcube.lib.event.routing.EventSource;
 import com.ravcube.lib.event.kafka.KafkaPublishSupport;
 import com.ravcube.lib.logger.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

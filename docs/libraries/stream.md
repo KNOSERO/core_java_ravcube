@@ -180,6 +180,12 @@ Listener Stream korzysta z osobnej fabryki Kafka. Dziedziczy z fabryki aplikacji
 consumer factory oraz najważniejsze ustawienia kontenera, a nadpisuje tylko
 concurrency i error handling Stream.
 
+Wspólna konfiguracja połączenia, serializacji i domyślnej grupy Kafka należy do
+`lib:event:core` (`ravcube.kafka.*`). Stream nie nadpisuje tych wartości;
+konfiguruje wyłącznie własny topic oraz grupę konsumencką wyprowadzane z
+`spring.application.name`, `ravcube.stream.kafka.service-name` i
+`ravcube.stream.kafka.instance-id`.
+
 Stream wykonuje maksymalnie trzy próby publikacji z jednosekundowym backoffem.
 Po wyczerpaniu prób powiadomienie jest traktowane jako utracone i rejestrowane w
 metryce. Jest to kanał best-effort notification, a nie trwała historia zdarzeń.

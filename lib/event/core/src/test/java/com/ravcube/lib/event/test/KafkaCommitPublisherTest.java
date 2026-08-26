@@ -2,7 +2,7 @@ package com.ravcube.lib.event.test;
 
 import com.ravcube.lib.event.config.TestApplication;
 import com.ravcube.lib.event.domain.KafkaDomainEvent;
-import com.ravcube.lib.event.inteface.EventPublisher;
+import com.ravcube.lib.event.api.EventPublisher;
 import com.ravcube.lib.event.listener.KafkaCommitAuditListener;
 import com.ravcube.lib.event.listener.KafkaCommitListener;
 import com.ravcube.lib.event.listener.KafkaRollbackListener;
@@ -43,7 +43,7 @@ class KafkaCommitPublisherTest {
     }
 
     @Test
-    void shouldHandleEventAfterCommit() {
+    void eventIsHandledAfterCommit() {
         KafkaDomainEvent event = new KafkaDomainEvent(UUID.randomUUID(), "commit");
 
         transactionTemplate.executeWithoutResult(status -> publisher.publish(event));
@@ -53,7 +53,7 @@ class KafkaCommitPublisherTest {
     }
 
     @Test
-    void shouldInvokeEachCommitListenerExactlyOnceAfterCommit() {
+    void everyKafkaCommitListenerReceivesTheEvent() {
         KafkaDomainEvent event = new KafkaDomainEvent(UUID.randomUUID(), "commit-two-listeners");
 
         transactionTemplate.executeWithoutResult(status -> publisher.publish(event));
@@ -64,7 +64,7 @@ class KafkaCommitPublisherTest {
     }
 
     @Test
-    void shouldNotHandleEventWhenTransactionRollsBack() {
+    void eventIsNotHandledAfterRollback() {
         KafkaDomainEvent event = new KafkaDomainEvent(UUID.randomUUID(), "rollback");
 
         transactionTemplate.executeWithoutResult(status -> {
@@ -76,7 +76,7 @@ class KafkaCommitPublisherTest {
     }
 
     @Test
-    void shouldNotHandleAnyEventBeforeTransactionCompletes() {
+    void eventIsHandledAfterTransactionCompletes() {
         KafkaDomainEvent event = new KafkaDomainEvent(UUID.randomUUID(), "in-progress");
 
         transactionTemplate.executeWithoutResult(status -> {
