@@ -9,9 +9,9 @@ mechanizmem odtwarzania historii.
 
 | Moduł | Odpowiedzialność | Zależności techniczne |
 | --- | --- | --- |
-| lib:event:common | DomainEvent i @Topic, czyli kontrakt zdarzenia. | Brak Springa i Kafka. |
-| lib:event:core | Routing, cykl transakcji Spring i adapter Kafka. | Spring, Kafka i event:common. |
-| lib:event:api | EventPublisher oraz konfiguracja składająca publikację z core. | event:core i event:common. |
+| lib:event:common | DomainEvent, @Topic i EventPublisher, czyli neutralne kontrakty zdarzeń. | Brak Springa i Kafka. |
+| lib:event:core | Implementacja EventPublisher, routing, cykl transakcji Spring i adapter Kafka. | Spring, Kafka i event:common. |
+| lib:event:api | Fasada konfigurująca i udostępniająca Event na zewnątrz. | event:core i event:common. |
 
 ~~~mermaid
 flowchart BT
@@ -36,7 +36,9 @@ dependencies {
 }
 ~~~
 
-event:api dołącza event:core jako wewnętrzną implementację. Moduł
+event:api udostępnia kontrakty z event:common i dołącza event:core jako
+wewnętrzną implementację. EventPublisher fizycznie należy do event:common,
+dzięki czemu core może go implementować bez zależności zwrotnej do api. Moduł
 konfiguracyjny, który rejestruje własne klasy Default...Publisher lub
 Default...Listener, deklaruje dodatkowo event:core. Kod biznesowy nie powinien
 korzystać z klas routingu ani adapterów Kafka.
@@ -211,9 +213,10 @@ pakietów zdarzeń aplikacji; wartość * jest zgodna wstecznie, lecz zbyt szero
 
 ## Zgodność migracji
 
-DomainEvent i @Topic zachowały nazwy pakietów. Moduł domenowy zmienia wyłącznie
-zależność Gradle z event:api na event:common. Kod publikujący dodaje event:api,
-który składa API z implementacją event:core. Nowy import punktu wejścia to
+DomainEvent, @Topic i EventPublisher zachowały nazwy pakietów. Moduł domenowy
+zmienia wyłącznie zależność Gradle z event:api na event:common. Kod publikujący
+dodaje event:api, który udostępnia kontrakt z event:common i składa go z
+implementacją event:core. Import punktu wejścia pozostaje bez zmian:
 com.ravcube.lib.event.api.EventPublisher. Poprzedni import z błędnie nazwanej
 paczki inteface jest zachowany jako przestarzały alias do stopniowej migracji.
 

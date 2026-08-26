@@ -26,7 +26,9 @@ dependencies {
 
 Aplikacja korzystająca z biblioteki musi mieć dostęp do Kafka dla profilu
 kafka. Nie należy dodawać bezpośredniej zależności na stream:core; implementacja
-SSE pozostaje szczegółem biblioteki.
+SSE pozostaje szczegółem biblioteki. stream:api udostępnia również fasadę
+event:api, dlatego aplikacja może wstrzyknąć EventPublisher bez dodawania osobnej
+zależności Eventu.
 
 ## Pierwsze użycie
 
