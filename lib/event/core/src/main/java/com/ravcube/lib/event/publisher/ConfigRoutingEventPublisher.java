@@ -4,12 +4,15 @@ import com.ravcube.lib.event.inteface.AbstractPublisher;
 import com.ravcube.lib.event.DomainEvent;
 import com.ravcube.lib.event.inteface.EventPublisher;
 import com.ravcube.lib.event.StoragePublisher;
+import com.ravcube.lib.logger.core.LoggerConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 
 import java.util.List;
 
 @Configuration
+@Import(LoggerConfiguration.class)
 public class ConfigRoutingEventPublisher {
 
     @Bean

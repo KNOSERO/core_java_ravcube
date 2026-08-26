@@ -77,208 +77,110 @@ should not own business policy.
 
 ## Testing Policy
 
-- Tests should be readable as behavior specifications.
-- Test observable behavior, public contracts, and integration boundaries rather
-  than private implementation details.
-- Prefer behavior names in tests, for example `shouldPublishRefreshEvent...`,
-  instead of names describing internal methods or data structures.
-- Prefer arrange-act-assert structure.
-- Use package and directory names that explain the test level and purpose, for
-  example `domain`, `integration`, `support`, `web`, `event`, or `update`.
-- Keep low-level test infrastructure in `support` packages.
-- Avoid repeating HTTP, container, serialization, or asynchronous plumbing inside
-  behavior-focused tests.
-- Unit tests should cover domain rules and small library contracts.
-- Integration tests should verify framework wiring and real boundaries.
-- Container tests should be used when behavior depends on a real external
-  dependency, such as PostgreSQL, Redis, Kafka, Elasticsearch, Keycloak, or
-  Eureka.
-- Do not use container tests to verify logic that can be tested with a fast
-  domain or contract test.
-- Keep container setup reusable and hidden behind test support modules or
-  `support` packages, so scenario tests stay focused on behavior.
-- Avoid arbitrary sleeps. Prefer await utilities, named helpers, or observable
-  readiness checks.
+- Treat tests as executable business and integration contracts. Use TDD in the
+  order red -> green -> refactor: write the smallest failing behavior test,
+  implement the minimum, then simplify the design.
+- Assert observable behavior through public boundaries. Do not test private
+  methods, fields, internal collections, implementation classes, or incidental
+  collaborator call counts.
+- Use short outcome-oriented names such as
+  `subscribedClientReceivesItsClaimUpdate`, `invalidIdsReturnBadRequest`, and
+  `eventIsPublishedAfterCommit`. Avoid `shouldCorrectlyHandle...` and names
+  copied from method or class names.
+- Prefer Arrange-Act-Assert or Given-When-Then consistently. Keep setup visible
+  and use focused domain helpers for plumbing only.
+- Mirror production packages in test sources. Use these levels only when they
+  represent a real boundary:
 
-## Documentation Policy
+  ```text
+  src/test/java/.../domain/          # pure rules, no Spring or transports
+  src/test/java/.../application/     # use cases with real objects and named fakes
+  src/test/java/.../web/             # HTTP contract and response behavior
+  src/test/java/.../event/           # event routing and commit/rollback behavior
+  src/test/java/.../integration/     # real external boundary
+  src/test/java/.../support/         # test app, clients, fakes, containers
+  ```
 
-Documentation is part of the product. Every public behavior, integration point,
-configuration option, test utility, and reusable module should be understandable
-from the Markdown documentation without reading implementation code first.
+- In `core`, test domain/application behavior and the owned technical boundary
+  only. For the stream module this means core tests cover SSE subscriptions,
+  routing, limits, cleanup, and emitted SSE behavior; they do not use HTTP
+  controllers, Kafka, or event publishers/listeners.
+- In `api`, test the HTTP and event boundaries with real Spring wiring. Use
+  `@SpringBootTest` plus MockMvc or a real HTTP client, real application
+  services, the real `ClientStreamRefreshListener`, and a real transaction
+  boundary. Do not use `@WebMvcTest` with mocked services or
+  `MockMvcBuilders.standaloneSetup` with Mockito.
+- Do not use Mockito, `@Mock`, `@MockBean`, or equivalent doubles as the default
+  in API, infrastructure, HTTP, SSE, event, messaging, persistence, or cache
+  tests. A mock can make a broken integration appear correct. Use real beans or
+  a named deterministic fake at a stable application port instead.
+- Use the project’s `test:*` modules and Testcontainers for external services
+  whose behavior matters: PostgreSQL, Redis, Kafka, Elasticsearch, Keycloak,
+  Eureka, or another real dependency. Verify serialization, connectivity,
+  retries, transactions, and routing against the running service.
+- Do not add a fake container just to satisfy a rule. The stream event path
+  uses a service-scoped Kafka topic and a pod-specific consumer group, so its
+  API test must use real Spring wiring, a real transaction boundary, and the
+  existing `test:kafka` Testcontainers module. Verify the HTTP -> event
+  publisher -> Kafka -> listener -> SSE behavior.
+- Do not use arbitrary sleeps. Use the project Awaitility helpers or wait for
+  an observable readiness/event condition.
+- Keep container setup, test applications, HTTP/SSE clients, and reusable fakes
+  in `support` or an existing `test:*` module. Scenario tests should contain
+  only domain setup, the public action, and observable assertions.
+- Before finishing, run the narrowest relevant test task, then a broader check
+  when practical. Never report tests as passing when they were not executed;
+  report missing Docker, Gradle, container, or network prerequisites exactly.
 
-Write documentation for library consumers and future maintainers:
+## Project Documentation
 
-- Explain what the module does, when to use it, and when not to use it.
-- Describe the public contract, observable behavior, configuration, extension
-  points, and integration boundaries.
-- Use real names from the repository: Gradle module paths, package names, class
-  names, annotations, profiles, properties, endpoints, topics, and bean names.
-- Prefer short, concrete examples over abstract prose.
-- Document assumptions and failure modes when they affect correct usage, such as
-  required Spring profiles, container dependencies, transaction timing, Kafka
-  routing, Redis configuration, Keycloak setup, retry behavior, or idempotency.
-- Keep pages stable for AI retrieval: use durable headings, descriptive page
-  names, explicit module paths, and links to related documentation pages.
-- Do not document private implementation details unless they directly affect how
-  users integrate the library.
-- Do not put agent workflow rules, architecture policy, or build-operation notes
-  into public documentation pages. Keep those in `AGENTS.md`.
+Public documentation is maintained as Markdown in the central Docusaurus site.
 
-Apply engineering principles to documentation:
-
-- KISS: start with the simplest correct mental model. Add detail only when it
-  helps the reader make a correct decision.
-- DRY: avoid repeating long setup instructions or explanations across pages.
-  Link to shared documentation when the same concept applies to multiple
-  modules, but keep short module-specific notes where they prevent mistakes.
-- SOLID-style responsibility: one page should have one clear purpose. A module
-  guide should document that module, shared concepts should live in shared
-  guides, and unrelated capabilities should be split into separate pages.
-- Consistency: use the same words for the same domain concept across code,
-  tests, and documentation.
-
-Keep public documentation in the central `docs/` site so it is visible in the
-Docusaurus navigation. Module-local README files may exist as secondary entry
-points, but public behavior should also be represented from the central site.
-
-### Documentation Update Requirements
-
-For every code change, explicitly decide whether documentation is affected.
-Update documentation when any of the following changes:
-
-- A public class, interface, annotation, configuration property, Spring profile,
-  bean, endpoint, event, repository contract, or test helper is added, renamed,
-  removed, or changes behavior.
-- A module dependency, supported technology, external service assumption,
-  profile, property, container requirement, or Gradle task changes.
-- A guide example no longer matches the real API.
-- A new module or documentation page is added.
-
-When documentation is affected:
-
-- Update the matching guide under `docs/libraries/` for production modules or
-  `docs/test-modules/` for reusable test modules.
-- Update `docs/getting-started/project-map.md` when module ownership, purpose, or
-  use cases change.
-- Update `docs/index.md` and `docs-site/sidebars.js` when adding or removing a
-  page that should appear in navigation.
-- Keep examples conceptually compilable and aligned with actual Gradle module
-  names from `settings.gradle.kts`.
-
-### Professional Guide Structure
-
-Use this structure for new or substantially rewritten module guides unless the
-existing page has a clearer local convention:
-
-1. Module purpose: one short paragraph explaining the capability and the problem
-   it solves.
-2. When to use it: concise scenarios that help users choose the module.
-3. Module boundaries: what the module owns, what it delegates to other modules,
-   and whether it is a contract module, implementation module, or test-support
-   module.
-4. Setup: Gradle module dependency, Spring configuration, profiles, and external
-   services required for runtime or tests.
-5. Usage example: a small Java or Kotlin example using real API names.
-6. Extension points: interfaces, annotations, configuration classes, listeners,
-   publishers, repositories, or hooks users are expected to implement.
-7. Operational notes: transactions, retries, caching behavior, serialization,
-   container startup, ports, credentials, or other runtime constraints.
-8. Related documentation: links to nearby guides that explain connected modules
-   or shared concepts.
-
-Keep pages short enough to scan. If a page grows into unrelated topics, split it
-and add both pages to the Docusaurus sidebar.
-
-### Writing Standard
-
-Documentation should be precise, practical, and professional:
-
-- Use direct language and short paragraphs.
-- Prefer active voice: "Configure the Redis profile" instead of "The Redis
-  profile should be configured."
-- Start sections with the outcome the reader needs, then provide the mechanics.
-- Use tables for comparison and module maps, but use prose for behavior and
-  trade-offs.
-- Use fenced code blocks with language tags for examples.
-- Keep examples small enough to understand, but complete enough to show the real
-  integration point.
-- Name prerequisites explicitly before examples that depend on Spring profiles,
-  containers, security realms, topics, ports, or external services.
-- Avoid marketing language, vague claims, and placeholder names.
-- Avoid documenting obvious code behavior that the public names already explain.
-- Do not invent APIs, properties, modules, or behavior. Inspect the code first.
-
-## Documentation Builder Direction
-
-The preferred documentation output is a complete static website built from
-Markdown guides. Use Docusaurus for the public documentation site.
-
-When adding or changing a public feature:
-
-- Update or create Markdown documentation for user-visible behavior.
-- Include examples that compile conceptually and match the actual API names.
-- Document module boundaries and integration points.
-- Prefer stable page names and links so Markdown documentation remains useful for
-  AI context retrieval.
-- Place cross-module documentation under `docs/`.
-- Place module-specific guides under `docs/libraries/` or `docs/test-modules/`
-  so the documentation remains visible in the main navigation.
-
-Documentation locations:
+Project-specific locations:
 
 ```text
 docs/                     Public Markdown documentation.
 docs/libraries/           Production library guides.
 docs/test-modules/        Reusable test-support module guides.
 docs/getting-started/     Project orientation and module ownership.
-docs-site/                Docusaurus site configuration and static-site output.
-docs-site/sidebars.js     Navigation for public documentation pages.
-lib/                      Production libraries that should be documented.
-test/                     Reusable test-support modules that should be documented.
+docs-site/                Docusaurus configuration and static-site output.
+docs-site/sidebars.js     Public documentation navigation.
+lib/                      Production libraries documented by the site.
+test/                      Reusable test-support modules documented by the site.
 ```
 
-Current build flow:
+Project-specific documentation rules:
+
+- Public behavior is documented in the central `docs/` site. Module-local
+  README files are secondary entry points.
+- Production guides belong under `docs/libraries/`; reusable test-module guides
+  belong under `docs/test-modules/`.
+- Add or remove corresponding entries in `docs-site/sidebars.js` when pages
+  change.
+- Module guides should cover purpose, use cases, module boundaries, setup,
+  usage, extension points, operational notes, and related documentation.
+- Use verified Gradle module paths, package names, properties, endpoints, bean
+  names, and event names. Do not invent APIs or implementation behavior.
+- Use Mermaid code blocks for architecture, dependency, lifecycle, and event
+  diagrams. The Docusaurus site is configured to render them.
+
+Documentation tooling:
 
 ```text
 ./gradlew doc-build
 ./gradlew doc-dev
+.\\gradlew.bat doc-build
+.\\gradlew.bat doc-dev
 ```
 
-Current local documentation tooling:
+The local documentation server is available at `http://127.0.0.1:3000`.
+Documentation tooling runs through Docker or Podman; a local Python installation
+is not required. `doc-build` writes the static site to `docs-site/build/`.
+`doc-dev` serves the site from a container and rebuilds pages while Markdown
+files change. The container image is defined in `docs-site/Dockerfile`.
 
-```powershell
-.\gradlew.bat doc-build
-.\gradlew.bat doc-dev
-```
-
-The local documentation server exposes the project documentation at:
-
-```text
-http://127.0.0.1:3000
-```
-
-Documentation tooling must run through container-managed Gradle tasks. Use
-Docker or Podman automatically through `doc-build` and `doc-dev`. Do not require
-a local Python installation for building or serving docs.
-
-Documentation operational details belong in this file, not in user-facing
-documentation pages. Public documentation should focus on module purpose,
-architecture decisions, examples, and usage.
-
-Documentation runtime notes for agents:
-
-- `doc-build` builds the complete static documentation site into
-  `docs-site/build/`.
-- `doc-dev` serves Docusaurus from a container on `http://127.0.0.1:3000` and
-  rebuilds pages while documentation files change.
-- `doc-dev` stops the previous documentation container for the selected port
-  before starting a new one.
-- The container image is defined in `docs-site/Dockerfile`.
-- Docusaurus dependencies are installed under `/opt/docs-runtime` so repository
-  mounts do not hide `node_modules`.
-- The serve task sets `BROWSER=none` to prevent Docusaurus from trying to open
-  a browser from inside Linux containers.
-- Podman on Windows may require `podman machine set --user-mode-networking=true`.
+Keep documentation operational details in `AGENTS.md`; public pages should
+focus on module purpose, architecture decisions, examples, and usage.
 
 ## Spring And Integration Libraries
 
@@ -294,12 +196,9 @@ Documentation runtime notes for agents:
 ## Change Workflow
 
 - Read the relevant module and tests before editing.
-- Read the relevant documentation page before editing public behavior. If no
-  relevant page exists, create one under the appropriate documentation section.
-- Make the smallest coherent change that satisfies the task.
+- - Make the smallest coherent change that satisfies the task.
 - Add or update tests at the right level.
-- Update documentation for public behavior changes in the same change.
-- Run the narrowest relevant test task first, then broader checks when the
+- - Run the narrowest relevant test task first, then broader checks when the
   change affects shared behavior.
 - For documentation changes, run `.\gradlew.bat doc-build` when container tooling
   is available. If it cannot be run, report the exact missing runtime or failure.
@@ -311,7 +210,32 @@ Before finishing a change, verify:
 
 - The domain language is visible in names and tests.
 - Infrastructure details are isolated from domain behavior.
-- Public behavior is documented in the relevant Markdown guide.
 - Tests are readable and avoid duplicated plumbing.
-- Documentation is updated when behavior or usage changed.
 - The implementation follows the existing module conventions.
+
+
+## Logging Boundary
+
+- Reusable libraries must depend on lib:logger:api for logging contracts.
+- Concrete logging backends belong in lib:logger:core and must be wired explicitly
+  through configuration.
+- Do not import SLF4J, Logback, or Commons Logging directly into reusable domain,
+  application, Stream, or Event code.
+- Log technical context and failures without business payloads, tokens,
+  authorization headers, or full event objects.
+- A new log statement is part of the public operational behavior: update the
+  relevant library documentation when it changes troubleshooting or production
+  configuration.
+
+## Stream/Event Boundary
+
+- stream:common contains the public refresh event contract and transport-neutral integration errors; it must not contain Spring, HTTP, Kafka, or SSE implementation details.
+- stream:core owns SSE subscriptions, routing, limits, queues, and notification
+  serialization; these implementation classes are not public library contracts.
+- stream:api exposes the HTTP controller and the event entry point needed by
+  consuming applications. Kafka topic and consumer-group mechanics remain internal.
+- A Stream refresh is a notification containing resource name, resource ID, and
+  source version; it must not carry a business payload.
+- Stream refresh events are service-scoped Kafka events. Every pod of one service
+  uses its own consumer group; other services and other event types must keep
+  their existing routing.

@@ -1,0 +1,9 @@
+ravcube:
+  stream:
+    path: /streams
+    timeout: PT30M
+    heartbeat-interval: PT15S
+    max-ids-per-subscription: 100
+    max-subscriptions: 1000
+    max-subscriptions-per-client: 100
+    max-pending-events-per-subscription: 100

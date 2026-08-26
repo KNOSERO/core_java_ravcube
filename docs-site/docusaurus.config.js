@@ -5,6 +5,10 @@ module.exports = {
   tagline: 'Spring integration libraries with clear module boundaries.',
   url: 'http://localhost:3000',
   baseUrl: '/',
+  markdown: {
+    mermaid: true,
+  },
+  themes: ['@docusaurus/theme-mermaid'],
   organizationName: 'ravcube',
   projectName: 'core-java-ravcube',
   onBrokenLinks: 'warn',

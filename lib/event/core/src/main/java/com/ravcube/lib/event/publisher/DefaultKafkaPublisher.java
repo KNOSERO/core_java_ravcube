@@ -3,9 +3,11 @@ package com.ravcube.lib.event.publisher;
 import com.ravcube.lib.event.DomainEvent;
 import com.ravcube.lib.event.enums.EventSource;
 import com.ravcube.lib.event.kafka.KafkaPublishSupport;
+import com.ravcube.lib.logger.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
 
+import java.time.Duration;
 import java.util.Objects;
 
 public class DefaultKafkaPublisher<E extends DomainEvent> extends AbstractCommitPublisher<E> {
@@ -14,7 +16,39 @@ public class DefaultKafkaPublisher<E extends DomainEvent> extends AbstractCommit
 
     @Override
     protected void on(E event) {
-        Objects.requireNonNull(kafkaPublisher, "kafkaPublisher must not be null").publish(event);
+        publishToKafka(event, baseTopic(event));
+    }
+
+    protected final void publishToKafka(E event, String baseTopic) {
+        publishToKafka(event, baseTopic, 1);
+    }
+
+    protected final void publishToKafka(E event, String baseTopic, int maxAttempts) {
+        kafkaPublisher().publish(event, baseTopic, maxAttempts);
+    }
+
+    protected final void publishToKafka(
+            E event,
+            String baseTopic,
+            int maxAttempts,
+            Duration retryBackoff,
+            Runnable onExhausted
+    ) {
+        kafkaPublisher().publish(
+                event,
+                baseTopic,
+                maxAttempts,
+                retryBackoff,
+                onExhausted
+        );
+    }
+
+    protected final KafkaPublishSupport<E> kafkaPublisher() {
+        return Objects.requireNonNull(kafkaPublisher, "kafkaPublisher must not be null");
+    }
+
+    protected String baseTopic(E event) {
+        return DomainEvent.getTopic(event.getClass());
     }
 
     @Override
@@ -23,7 +57,14 @@ public class DefaultKafkaPublisher<E extends DomainEvent> extends AbstractCommit
     }
 
     @Autowired
-    private void setKafkaTemplate(KafkaTemplate<String, E> kafkaTemplate) {
-        this.kafkaPublisher = new KafkaPublishSupport<>(kafkaTemplate, source());
+    private void setKafkaTemplate(
+            KafkaTemplate<String, E> kafkaTemplate,
+            LoggerFactory loggerFactory
+    ) {
+        this.kafkaPublisher = new KafkaPublishSupport<>(
+                kafkaTemplate,
+                source(),
+                loggerFactory.getLogger(getClass())
+        );
     }
 }

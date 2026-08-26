@@ -6,6 +6,7 @@ plugins {
 dependencies {
     implementation(project(":lib:common"))
     api(project(":lib:event:api"))
+    implementation(project(":lib:logger:core"))
     implementation(libs.jackson.databind)
     api(libs.spring.context)
     api(libs.spring.kafka)

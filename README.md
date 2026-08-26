@@ -4,10 +4,13 @@ Reusable Spring integration libraries and test modules.
 
 ## Documentation
 
+The documentation entry point is [docs/index.md](docs/index.md). It explains
+the module map, public library guides, test modules, and local site workflow.
+
 Serve the documentation locally:
 
 ```powershell
-.\gradlew.bat doc-dev
+.\\gradlew.bat doc-dev
 ```
 
 `doc-dev` stops the previous documentation container for the selected port before
@@ -25,13 +28,13 @@ URL. Use `http://127.0.0.1:3000` from your browser.
 Use a different port:
 
 ```powershell
-.\gradlew.bat doc-dev -PdocsPort=8010
+.\\gradlew.bat doc-dev -PdocsPort=8010
 ```
 
 Build a static website:
 
 ```powershell
-.\gradlew.bat doc-build
+.\\gradlew.bat doc-build
 ```
 
 Documentation tooling runs in Docker or Podman. A local Python installation is
@@ -48,5 +51,5 @@ If Gradle runs from an environment that does not inherit your PATH, pass the
 container executable explicitly:
 
 ```powershell
-.\gradlew.bat doc-dev -PcontainerCommand="C:\Program Files\Docker\Docker\resources\bin\docker.exe"
+.\\gradlew.bat doc-dev -PcontainerCommand="C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe"
 ```
