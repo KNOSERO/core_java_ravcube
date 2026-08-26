@@ -10,8 +10,15 @@ mechanizmem odtwarzania historii.
 | Moduł | Odpowiedzialność | Zależności techniczne |
 | --- | --- | --- |
 | lib:event:common | DomainEvent i @Topic, czyli kontrakt zdarzenia. | Brak Springa i Kafka. |
-| lib:event:api | EventPublisher — punkt wejścia do publikacji. | Tylko event:common. |
-| lib:event:core | Routing, cykl transakcji Spring i adapter Kafka. | Spring i Kafka. |
+| lib:event:core | Routing, cykl transakcji Spring i adapter Kafka. | Spring, Kafka i event:common. |
+| lib:event:api | EventPublisher oraz konfiguracja składająca publikację z core. | event:core i event:common. |
+
+~~~mermaid
+flowchart BT
+    api["event:api"] --> core["event:core"]
+    api --> common["event:common"]
+    core --> common
+~~~
 
 Moduł domenowy, który jedynie definiuje zdarzenie, używa event:common:
 
@@ -21,14 +28,18 @@ dependencies {
 }
 ~~~
 
-Aplikacja publikująca lub obsługująca zdarzenia używa event:core, który
-udostępnia tranzytywnie API i kontrakt wspólny:
+Kod aplikacyjny, który publikuje zdarzenia, używa wyłącznie event:api:
 
 ~~~kotlin
 dependencies {
-    implementation(project(":lib:event:core"))
+    implementation(project(":lib:event:api"))
 }
 ~~~
+
+event:api dołącza event:core jako wewnętrzną implementację. Moduł
+konfiguracyjny, który rejestruje własne klasy Default...Publisher lub
+Default...Listener, deklaruje dodatkowo event:core. Kod biznesowy nie powinien
+korzystać z klas routingu ani adapterów Kafka.
 
 ## Pierwsze użycie
 
@@ -201,7 +212,8 @@ pakietów zdarzeń aplikacji; wartość * jest zgodna wstecznie, lecz zbyt szero
 ## Zgodność migracji
 
 DomainEvent i @Topic zachowały nazwy pakietów. Moduł domenowy zmienia wyłącznie
-zależność Gradle z event:api na event:common. Nowy import punktu wejścia to
+zależność Gradle z event:api na event:common. Kod publikujący dodaje event:api,
+który składa API z implementacją event:core. Nowy import punktu wejścia to
 com.ravcube.lib.event.api.EventPublisher. Poprzedni import z błędnie nazwanej
 paczki inteface jest zachowany jako przestarzały alias do stopniowej migracji.
 
