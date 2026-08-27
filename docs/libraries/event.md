@@ -49,9 +49,23 @@ class EventConfiguration {
 }
 ~~~
 
-Konfiguracja rejestruje EventPublisher, routing listenerów, backend loggera oraz
-listenery transportu Kafka aktywne w profilu kafka. Aplikacja nie powinna
-importować tych elementów z event:core osobno.
+Ta konfiguracja rejestruje EventPublisher, routing listenerów i backend loggera.
+Jeżeli aplikacja korzysta z listenerów transportu Kafka, dołącz również ich
+opcjonalną konfigurację:
+
+~~~java
+import com.ravcube.lib.event.config.ConfigKafkaEventListeners;
+import org.springframework.context.annotation.Import;
+
+@Import(ConfigKafkaEventListeners.class)
+class EventKafkaConfiguration {
+}
+~~~
+
+`ConfigKafkaEventListeners` jest potrzebna tylko wtedy, gdy profil `kafka` jest
+aktywny i aplikacja ma listenery dziedziczące po `DefaultKafkaCommitListener`
+lub `DefaultKafkaRollbackListener`. Dzięki temu samo użycie EventPublishera nie
+uruchamia pustych kontenerów Kafka.
 
 event:api udostępnia kontrakty z event:common oraz publiczne punkty rozszerzeń z
 event:core. EventPublisher fizycznie należy do event:common, dzięki czemu core

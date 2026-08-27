@@ -25,6 +25,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 @EnableAutoConfiguration
 @Import({
         ConfigRoutingEventPublisher.class,
+        ConfigKafkaEventListeners.class,
         KafkaCommitAuditListener.class,
         KafkaCommitListener.class,
         KafkaRollbackListener.class,

@@ -2,8 +2,6 @@ package com.ravcube.lib.event.publisher;
 
 import com.ravcube.lib.event.DomainEvent;
 import com.ravcube.lib.event.api.EventPublisher;
-import com.ravcube.lib.event.kafka.CommitKafkaListener;
-import com.ravcube.lib.event.kafka.RollbackKafkaListener;
 import com.ravcube.lib.event.listener.ConfigRoutingEventListener;
 import com.ravcube.lib.event.routing.AbstractEventPublisher;
 import com.ravcube.lib.logger.core.LoggerConfiguration;
@@ -16,8 +14,6 @@ import java.util.List;
 @Configuration
 @Import({
         ConfigRoutingEventListener.class,
-        CommitKafkaListener.class,
-        RollbackKafkaListener.class,
         LoggerConfiguration.class
 })
 public class ConfigRoutingEventPublisher {
