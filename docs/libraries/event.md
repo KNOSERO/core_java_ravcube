@@ -36,6 +36,23 @@ dependencies {
 }
 ~~~
 
+W konfiguracji aplikacji zaimportuj publiczny punkt wejścia Eventu:
+
+~~~java
+import com.ravcube.lib.event.publisher.ConfigRoutingEventPublisher;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
+
+@Configuration
+@Import(ConfigRoutingEventPublisher.class)
+class EventConfiguration {
+}
+~~~
+
+Konfiguracja rejestruje EventPublisher, routing listenerów, backend loggera oraz
+listenery transportu Kafka aktywne w profilu kafka. Aplikacja nie powinna
+importować tych elementów z event:core osobno.
+
 event:api udostępnia kontrakty z event:common oraz publiczne punkty rozszerzeń z
 event:core. EventPublisher fizycznie należy do event:common, dzięki czemu core
 może go implementować bez zależności zwrotnej do api. Serwis zależny od
