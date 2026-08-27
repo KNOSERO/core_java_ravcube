@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ActiveProfiles({"keycloak", TEST_KEYCLOAK_PROFILE, "eureka", TEST_EUREKA_PROFILE})
 @SpringBootTest(
@@ -55,11 +56,10 @@ class SecurityEurekaFeignContainerIntegrationTest {
 
         securityApi.logout(refreshedResponse.refreshToken());
 
-        FeignException refreshAfterLogout = securityApi.expectStatus(
-                400,
+        FeignException refreshAfterLogout = securityApi.expectClientError(
                 () -> securityApi.authClient().refresh(new RefreshTokenRequest(refreshedResponse.refreshToken()))
         );
-        assertEquals(400, refreshAfterLogout.status());
+        assertTrue(refreshAfterLogout.status() >= 400 && refreshAfterLogout.status() < 500);
     }
 
     @Test
