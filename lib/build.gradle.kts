@@ -173,6 +173,12 @@ subprojects {
     tasks.withType<Test>().configureEach {
         useJUnitPlatform()
         outputs.upToDateWhen { false }
+        testLogging {
+            events("failed")
+            exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+            showCauses = true
+            showStackTraces = true
+        }
     }
 
     pluginManager.withPlugin("java-library") {

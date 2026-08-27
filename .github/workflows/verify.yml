@@ -2,6 +2,8 @@ name: Verify
 
 on:
   push:
+    branches:
+      - master
   pull_request:
 
 permissions:
@@ -26,8 +28,5 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Verify library structure
-        run: ./gradlew :lib:verifyLibraryStructure --no-daemon
-
-      - name: Compile and test
-        run: ./gradlew check --no-daemon
+      - name: Verify structure, compile and test
+        run: ./gradlew :lib:verifyLibraryStructure check --no-daemon --stacktrace
