@@ -7,11 +7,11 @@ import com.ravcube.lib.event.routing.EventPublisherRegistry;
 
 import java.util.List;
 
-final class RoutingEventPublisher implements EventPublisher {
+public final class RoutingEventPublisher implements EventPublisher {
 
     private final EventPublisherRegistry publishers;
 
-    RoutingEventPublisher(List<AbstractEventPublisher<? extends DomainEvent>> publishers) {
+    public RoutingEventPublisher(List<AbstractEventPublisher<? extends DomainEvent>> publishers) {
         this.publishers = EventPublisherRegistry.of(publishers);
     }
 

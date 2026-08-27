@@ -10,8 +10,8 @@ mechanizmem odtwarzania historii.
 | Moduł | Odpowiedzialność | Zależności techniczne |
 | --- | --- | --- |
 | lib:event:common | DomainEvent, @Topic i EventPublisher, czyli neutralne kontrakty zdarzeń. | Brak Springa i Kafka. |
-| lib:event:core | Implementacja EventPublisher, routing, cykl transakcji Spring i adapter Kafka. | Spring, Kafka i event:common. |
-| lib:event:api | Fasada konfigurująca i udostępniająca Event na zewnątrz. | event:core i event:common. |
+| lib:event:core | Implementacja EventPublisher, publiczne publishery/listenery, routing, cykl transakcji Spring i adapter Kafka. | Spring, Kafka i event:common. |
+| lib:event:api | Fasada konfigurująca i eksportująca kontrakty oraz punkty rozszerzeń Eventu. | event:core i event:common. |
 
 ~~~mermaid
 flowchart BT
@@ -36,12 +36,16 @@ dependencies {
 }
 ~~~
 
-event:api udostępnia kontrakty z event:common i dołącza event:core jako
-wewnętrzną implementację. EventPublisher fizycznie należy do event:common,
-dzięki czemu core może go implementować bez zależności zwrotnej do api. Moduł
-konfiguracyjny, który rejestruje własne klasy Default...Publisher lub
-Default...Listener, deklaruje dodatkowo event:core. Kod biznesowy nie powinien
-korzystać z klas routingu ani adapterów Kafka.
+event:api udostępnia kontrakty z event:common oraz publiczne punkty rozszerzeń z
+event:core. EventPublisher fizycznie należy do event:common, dzięki czemu core
+może go implementować bez zależności zwrotnej do api. Serwis zależny od
+event:api może bez dodatkowej zależności rozszerzać klasy Default...Publisher i
+Default...Listener. Kod biznesowy nie powinien korzystać bezpośrednio z klas
+routingu ani adapterów Kafka.
+
+Typy Spring i Kafka wymagane przez publiczne publishery oraz listenery są
+eksportowane tranzytywnie przez event:api. Konsument nie musi powtarzać tych
+zależności wyłącznie po to, aby skompilować własne rozszerzenie Eventu.
 
 ## Pierwsze użycie
 

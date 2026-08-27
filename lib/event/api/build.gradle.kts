@@ -4,9 +4,9 @@ plugins {
 
 dependencies {
     api(project(":lib:event:common"))
-    implementation(project(":lib:event:core"))
+    api(project(":lib:event:core"))
     implementation(project(":lib:logger:core"))
-    implementation(libs.spring.context)
+    api(libs.spring.context)
 
     testImplementation(libs.junit.jupiter)
     testImplementation(project(":test:kafka"))
