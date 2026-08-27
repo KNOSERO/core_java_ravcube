@@ -8,6 +8,9 @@ plugins {
 val verifyLibraryStructure by tasks.registering {
     group = "verification"
     description = "Verifies dependency direction and boundaries of production library modules."
+    notCompatibleWithConfigurationCache(
+        "The task validates the complete configured project dependency graph."
+    )
 
     doLast {
         val productionConfigurations = setOf(
