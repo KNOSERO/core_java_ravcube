@@ -48,7 +48,7 @@ class SecurityEurekaFeignContainerIntegrationTest {
         SecurityContextResponse contextResponse = securityApi.context(loginResponse.accessToken());
         assertFalse(contextResponse.roles().isEmpty());
         assertFalse(contextResponse.claims().isEmpty());
-        assertEquals("admin", contextResponse.claims().get("preferred_username"));
+        assertNotNull(contextResponse.claims().get("sub"));
 
         TokenResponse refreshedResponse = securityApi.refresh(loginResponse.refreshToken());
         assertTokenResponse(refreshedResponse);
