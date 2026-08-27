@@ -30,6 +30,23 @@ SSE pozostaje szczegółem biblioteki. stream:api udostępnia również fasadę
 event:api, dlatego aplikacja może wstrzyknąć EventPublisher bez dodawania osobnej
 zależności Eventu.
 
+W konfiguracji aplikacji zaimportuj jeden publiczny punkt wejścia Streamu:
+
+~~~java
+import com.ravcube.lib.stream.config.ClientStreamApiConfiguration;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
+
+@Configuration
+@Import(ClientStreamApiConfiguration.class)
+class StreamConfiguration {
+}
+~~~
+
+ClientStreamApiConfiguration składa implementację stream:core, konfigurację
+Eventu i backend loggera. Kod usługi nie powinien importować konfiguracji ani
+klas implementacyjnych z tych modułów bezpośrednio.
+
 ## Pierwsze użycie
 
 Klient otwiera subskrypcję:
@@ -231,3 +248,7 @@ HTTP subscription
 
 Weryfikowane są także routing do właściwej subskrypcji oraz brak refreshu po
 rollbacku. Testy nie zastępują tych granic mockami.
+
+Testowa aplikacja importuje wyłącznie ClientStreamApiConfiguration. Dzięki temu
+test wykrywa brakujący element publicznej fasady zamiast maskować go szerokim
+skanowaniem pakietów stream i event.

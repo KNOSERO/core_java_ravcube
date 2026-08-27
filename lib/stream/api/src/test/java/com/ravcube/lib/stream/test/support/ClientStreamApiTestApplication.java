@@ -1,9 +1,10 @@
 package com.ravcube.lib.stream.test.support;
 
+import com.ravcube.lib.stream.config.ClientStreamApiConfiguration;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Import;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.AbstractPlatformTransactionManager;
@@ -12,10 +13,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 @SpringBootConfiguration
 @EnableAutoConfiguration
-@ComponentScan(basePackages = {
-        "com.ravcube.lib.stream",
-        "com.ravcube.lib.event"
-})
+@Import(ClientStreamApiConfiguration.class)
 public class ClientStreamApiTestApplication {
 
     @Bean

@@ -16,7 +16,8 @@ Use this page to find the module that provides the capability you need.
 | `lib:event:common` | Transport-neutral event contracts. | A module defines events or implements `EventPublisher` without depending on Spring. |
 | `lib:event:api` | Event publication facade. | Application code publishes typed events. |
 | `lib:event:core` | Spring/Kafka event-routing implementation. | A configuration module registers delivery after a transaction. |
-| `lib:stream:api` | Client stream abstractions. | A feature exposes resource or collection updates. |
+| `lib:stream:common` | Transport-neutral refresh contract. | A module defines a refresh without depending on SSE or Kafka. |
+| `lib:stream:api` | Public Stream composition and HTTP/event entry points. | A feature exposes resource or collection updates. |
 | `lib:stream:core` | SSE stream implementation. | A Spring service exposes server-sent events. |
 | `lib:security:api` | Shared security context and Keycloak client contract. | Code needs roles, claims, or auth client API. |
 | `lib:security:core` | Keycloak and Spring Security integration. | A service authenticates through Keycloak. |
@@ -24,11 +25,14 @@ Use this page to find the module that provides the capability you need.
 | `lib:eureka:core` | Eureka integration support. | A service participates in discovery. |
 | `lib:fault-tolerance:core` | Circuit breaker defaults. | A service calls another service and needs failure isolation. |
 
-Production modules follow a consistent ownership rule: `api` modules define
-stable contracts for consumers, while `core` modules provide Spring and
-infrastructure implementations. Single-module libraries such as `lib:common`,
-`lib:data`, `lib:idempotency:core`, and `lib:fault-tolerance:core` own both the
-public contract and implementation for their focused capability.
+Event and Stream use a three-module facade layout: `common` owns neutral public
+contracts, `core` owns implementation, and `api` composes both for a consuming
+service. Their dependency direction is `api -> core -> common`, with an
+additional direct `api -> common` edge. Single-module libraries such as
+`lib:common`, `lib:data`, `lib:idempotency:core`, and
+`lib:fault-tolerance:core` own both the public contract and implementation for
+their focused capability. Older two-module libraries keep their documented
+contract/implementation split until they receive a dedicated migration.
 
 ## Test modules
 

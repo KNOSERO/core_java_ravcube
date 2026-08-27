@@ -6,6 +6,7 @@ dependencies {
     api(project(":lib:stream:common"))
     api(project(":lib:event:api"))
     implementation(project(":lib:stream:core"))
+    implementation(project(":lib:logger:core"))
     implementation(libs.spring.context)
     implementation(libs.spring.web)
     implementation(libs.spring.kafka)
