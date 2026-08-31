@@ -9,6 +9,6 @@ build
 **/build
 site
 docs-site/build
-docs-site/node_modules
+docs-site/node_modules/*
 docs-site/.docusaurus
 docs-site/static/javadoc/*
