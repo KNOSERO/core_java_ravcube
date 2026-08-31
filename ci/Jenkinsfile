@@ -77,7 +77,6 @@ pipeline {
             steps {
                 script {
                     sh '''
-                        docker info
                         bash ./gradlew --no-daemon doc-build -PcontainerCommand=docker
                     '''
                 }
