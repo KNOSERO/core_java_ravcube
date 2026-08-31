@@ -199,7 +199,7 @@ class PolicyCreatedKafkaListener extends DefaultKafkaCommitListener<PolicyCreate
 ~~~
 
 Dla KAFKA_AFTER_COMMIT zdarzenie jest wysyłane po zatwierdzeniu transakcji na
-topic <wartość @Topic>.commit. DomainEvent.getKey() jest kluczem rekordu Kafka;
+topic `<wartość @Topic>.commit`. DomainEvent.getKey() jest kluczem rekordu Kafka;
 domyślnie zwraca pusty łańcuch. Nadpisz go, gdy partycjonowanie lub kolejność
 dla konkretnej encji mają znaczenie.
 
@@ -219,8 +219,8 @@ sequenceDiagram
 | --- | --- | --- | --- |
 | Lokalnie po commit | DefaultCommitPublisher | DefaultCommitListener | AFTER_COMMIT w tej samej JVM. |
 | Lokalnie po rollbacku | DefaultRollbackPublisher | DefaultRollbackListener | AFTER_ROLLBACK w tej samej JVM. |
-| Kafka po commit | DefaultKafkaPublisher | DefaultKafkaCommitListener | <topic>.commit po zatwierdzeniu transakcji. |
-| Kafka po rollbacku | DefaultKafkaRollbackPublisher | DefaultKafkaRollbackListener | <topic>.rollback po wycofaniu transakcji. |
+| Kafka po commit | DefaultKafkaPublisher | DefaultKafkaCommitListener | `<topic>.commit` po zatwierdzeniu transakcji. |
+| Kafka po rollbacku | DefaultKafkaRollbackPublisher | DefaultKafkaRollbackListener | `<topic>.rollback` po wycofaniu transakcji. |
 
 Domyślna grupa konsumentów Eventu, event-core-kafka, obsługuje zwykłe zdarzenia
 konkurencyjnie; nie jest mechanizmem broadcastu do każdego poda. Stream ma
