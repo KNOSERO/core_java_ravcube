@@ -14,6 +14,7 @@ pipeline {
         CREDITS_ID = 'github-token'
         PIPELINE_SUCCESS_MESSAGE = 'All stages passed ✅'
         PIPELINE_FAILURE_MESSAGE = 'Pipeline failed ❌'
+        DOCKER_BUILDKIT = '1'
     }
     stages {
         stage('Init ENV') {
@@ -77,6 +78,8 @@ pipeline {
             steps {
                 script {
                     sh '''
+                        export DOCKER_HOST=tcp://home.ravnet:2375
+
                         bash ./gradlew --no-daemon doc-build -PcontainerCommand=docker
                     '''
                 }
@@ -87,6 +90,8 @@ pipeline {
             steps {
                 script {
                     sh '''
+                        export DOCKER_HOST=tcp://home.ravnet:2375
+
                         bash ./gradlew --no-daemon test
                     '''
                 }
