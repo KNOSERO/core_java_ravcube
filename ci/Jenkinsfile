@@ -1,0 +1,126 @@
+@Library('jenkins_shared_lib') _
+
+pipeline {
+    agent {
+        label 'home'
+    }
+    options {
+        skipDefaultCheckout();
+        timestamps();
+        ansiColor('xterm')
+    }
+    environment {
+        DEFAULT_BRANCH = 'master'
+        CREDITS_ID = 'github-token'
+        PIPELINE_SUCCESS_MESSAGE = 'All stages passed ✅'
+        PIPELINE_FAILURE_MESSAGE = 'Pipeline failed ❌'
+    }
+    stages {
+        stage('Init ENV') {
+            steps {
+                script {
+                    initEnv()
+                }
+            }
+        }
+
+        stage('Configure Triggers') {
+            steps {
+                script {
+                    configureTriggers()
+                }
+            }
+        }
+
+        stage('Checkout') {
+            parallel {
+                stage('Checkout PR') {
+                    when { expression { isPullRequestBuild() } }
+                    steps {
+                        checkoutPullRequest()
+                    }
+                }
+
+                stage('Checkout Manual') {
+                    when { not { expression { isPullRequestBuild() } } }
+                    steps {
+                        checkoutBranch("*/${env.DEFAULT_BRANCH}")
+                    }
+                }
+            }
+        }
+
+        stage('Init') {
+            parallel {
+                stage('Init Pipeline Status') {
+                    when { expression { isPullRequestBuild() } }
+                    steps {
+                        script {
+                            githubWebhook('PENDING', 'Pipeline started')
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                script {
+                    sh '''
+                        bash ./gradlew --no-daemon clean assemble
+                    '''
+                }
+            }
+        }
+
+        stage('Build Documentation') {
+            steps {
+                script {
+                    sh '''
+                        bash ./gradlew --no-daemon doc-build
+                    '''
+                }
+            }
+        }
+
+        stage('Test') {
+            steps {
+                script {
+                    sh '''
+                        bash ./gradlew --no-daemon test
+                    '''
+                }
+            }
+            post {
+                always {
+                    script {
+                        def testResult = junit(
+                            testResults: '**/build/test-results/test/*.xml'
+                        )
+                        def failedTests = testResult.failCount ?: 0
+                        def skippedTests = testResult.skipCount ?: 0
+                        def totalTests = testResult.totalCount ?: 0
+                        def passedTests = totalTests - failedTests - skippedTests
+
+                        env.PIPELINE_SUCCESS_MESSAGE = "All stages passed ✅, test passed: ${passedTests}"
+                        if (failedTests > 0) {
+                            env.PIPELINE_FAILURE_MESSAGE = "Pipeline failed ❌. test failed: ${failedTests}"
+                        }
+                    }
+                }
+            }
+        }
+    }
+    post {
+        success {
+            script {
+                githubWebhook('SUCCESS', env.PIPELINE_SUCCESS_MESSAGE)
+            }
+        }
+        failure {
+            script {
+                githubWebhook('FAILURE', env.PIPELINE_FAILURE_MESSAGE)
+            }
+        }
+    }
+}

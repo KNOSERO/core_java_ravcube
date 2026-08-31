@@ -1,5 +1,5 @@
 plugins {
-    \`java-library\`
+    `java-library`
     alias(libs.plugins.kotlin.jvm)
 }
 
