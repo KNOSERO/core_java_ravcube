@@ -15,6 +15,8 @@ pipeline {
         PIPELINE_SUCCESS_MESSAGE = 'All stages passed ✅'
         PIPELINE_FAILURE_MESSAGE = 'Pipeline failed ❌'
         DOCKER_BUILDKIT = '1'
+        DOCKER_HOST = 'tcp://home.ravnet:2375'
+        TESTCONTAINERS_HOST_OVERRIDE = 'home.ravnet'
     }
     stages {
         stage('Init ENV') {
@@ -78,8 +80,6 @@ pipeline {
             steps {
                 script {
                     sh '''
-                        export DOCKER_HOST=tcp://home.ravnet:2375
-
                         bash ./gradlew --no-daemon doc-build -PcontainerCommand=docker
                     '''
                 }
@@ -90,8 +90,6 @@ pipeline {
             steps {
                 script {
                     sh '''
-                        export DOCKER_HOST=tcp://home.ravnet:2375
-
                         bash ./gradlew --no-daemon test
                     '''
                 }
