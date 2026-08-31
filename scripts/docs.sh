@@ -112,7 +112,7 @@ container_ids_publishing_port() {
 build_docs_image() {
     local command="$1"
 
-    "$command" build -f docs-site/Dockerfile -t "$IMAGE" .
+    "$command" build --target docs-runtime -f docs-site/Dockerfile -t "$IMAGE" .
 }
 
 stop_docs_containers() {
@@ -136,13 +136,12 @@ stop_docs_containers() {
 invoke_static_site_build() {
     local command="$1"
 
-    "$command" run \
-        --rm \
-        --mount "type=bind,source=$WORKSPACE_PATH,target=/workspace" \
-        -w /workspace/docs-site \
-        "$IMAGE" \
-        docusaurus \
-        build
+    rm -rf docs-site/build
+    "$command" build \
+        --target docs-export \
+        --output type=local,dest=docs-site/build \
+        -f docs-site/Dockerfile \
+        .
 }
 
 invoke_docs_dev() {
