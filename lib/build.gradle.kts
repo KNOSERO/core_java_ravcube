@@ -5,6 +5,10 @@ plugins {
     `java-library`
 }
 
+val isCiBuild = providers.environmentVariable("CI")
+    .map { it.equals("true", ignoreCase = true) }
+    .orElse(false)
+
 val verifyLibraryStructure by tasks.registering {
     group = "verification"
     description = "Verifies dependency direction and boundaries of production library modules."
@@ -178,6 +182,7 @@ subprojects {
             exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
             showCauses = true
             showStackTraces = true
+            showStandardStreams = isCiBuild.get()
         }
     }
 
