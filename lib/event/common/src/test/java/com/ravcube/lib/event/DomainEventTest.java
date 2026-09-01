@@ -27,4 +27,5 @@ class DomainEventTest {
 
     private record UnroutedEvent(String policyId) implements DomainEvent {
     }
+
 }
