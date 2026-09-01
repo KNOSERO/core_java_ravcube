@@ -1,6 +1,6 @@
 package com.ravcube.lib.stream.test;
 
-import com.ravcube.lib.event.inteface.EventPublisher;
+import com.ravcube.lib.event.api.EventPublisher;
 import com.ravcube.lib.stream.common.event.ClientStreamRefreshEvent;
 import com.ravcube.lib.stream.test.support.ClientStreamApiTestApplication;
 import org.junit.jupiter.api.Test;

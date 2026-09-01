@@ -38,7 +38,7 @@ Override properties:
 | Property | Default |
 | --- | --- |
 | `ravcube.testcontainers.eureka.enabled` | `true` |
-| `ravcube.testcontainers.eureka.image` | Spring Cloud Eureka image pinned by digest. |
+| `ravcube.testcontainers.eureka.image` | `steeltoeoss/eureka-server:4.1.1`, pinned by manifest digest. |
 | `ravcube.testcontainers.eureka.count` | `1` |
 
 The module only starts Eureka when the test profile is active and

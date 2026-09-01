@@ -1,6 +1,35 @@
 val docsPort = providers.gradleProperty("docsPort").orElse("3000")
 val docsContainerCommand = providers.gradleProperty("containerCommand").orElse("")
-val docsScript = layout.projectDirectory.file("scripts/docs.ps1")
+val docsPowerShellScript = layout.projectDirectory.file("scripts/docs.ps1")
+val docsShellScript = layout.projectDirectory.file("scripts/docs.sh")
+val isWindows = System.getProperty("os.name").lowercase().contains("windows")
+
+fun docsCommand(mode: String): List<String> =
+    if (isWindows) {
+        listOf(
+            "powershell",
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            docsPowerShellScript.asFile.absolutePath,
+            mode,
+            "-Port",
+            docsPort.get(),
+            "-ContainerCommand",
+            docsContainerCommand.get()
+        )
+    } else {
+        listOf(
+            "bash",
+            docsShellScript.asFile.absolutePath,
+            mode,
+            "--port",
+            docsPort.get(),
+            "--container-command",
+            docsContainerCommand.get()
+        )
+    }
 
 tasks.register<Exec>("doc-build") {
     group = "documentation"
@@ -11,22 +40,10 @@ tasks.register<Exec>("doc-build") {
     inputs.file("docs-site/package.json")
     inputs.file("docs-site/docusaurus.config.js")
     inputs.file("docs-site/sidebars.js")
-    inputs.file(docsScript)
+    inputs.file(if (isWindows) docsPowerShellScript else docsShellScript)
     outputs.dir("docs-site/build")
 
-    commandLine(
-        "powershell",
-        "-NoProfile",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-File",
-        docsScript.asFile.absolutePath,
-        "build",
-        "-Port",
-        docsPort.get(),
-        "-ContainerCommand",
-        docsContainerCommand.get()
-    )
+    commandLine(docsCommand("build"))
 }
 
 tasks.register<Exec>("doc-dev") {
@@ -38,19 +55,7 @@ tasks.register<Exec>("doc-dev") {
     inputs.file("docs-site/package.json")
     inputs.file("docs-site/docusaurus.config.js")
     inputs.file("docs-site/sidebars.js")
-    inputs.file(docsScript)
+    inputs.file(if (isWindows) docsPowerShellScript else docsShellScript)
 
-    commandLine(
-        "powershell",
-        "-NoProfile",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-File",
-        docsScript.asFile.absolutePath,
-        "dev",
-        "-Port",
-        docsPort.get(),
-        "-ContainerCommand",
-        docsContainerCommand.get()
-    )
+    commandLine(docsCommand("dev"))
 }

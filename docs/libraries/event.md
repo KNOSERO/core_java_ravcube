@@ -1,26 +1,93 @@
 # Event
 
-Modules:
+Biblioteka Event przekazuje typowane zdarzenia domenowe po zakończeniu transakcji.
+Służy do uruchamiania reakcji lokalnie albo przez Kafka, bez wiązania kodu
+domenowego z mechanizmem transportowym. Nie jest magazynem zdarzeń ani
+mechanizmem odtwarzania historii.
 
-```text
-lib:event:api
-lib:event:core
-```
+## Moduły i granice
 
-The event library provides typed domain events and Spring/Kafka infrastructure
-for publishing and listening.
+| Moduł | Odpowiedzialność | Zależności techniczne |
+| --- | --- | --- |
+| lib:event:common | DomainEvent, @Topic i EventPublisher, czyli neutralne kontrakty zdarzeń. | Brak Springa i Kafka. |
+| lib:event:core | Implementacja EventPublisher, publiczne publishery/listenery, routing, cykl transakcji Spring i adapter Kafka. | Spring, Kafka i event:common. |
+| lib:event:api | Fasada konfigurująca i eksportująca kontrakty oraz punkty rozszerzeń Eventu. | event:core i event:common. |
 
-## Responsibility
+~~~mermaid
+flowchart BT
+    api["event:api"] --> core["event:core"]
+    api --> common["event:common"]
+    core --> common
+~~~
 
-`lib:event:api` owns the domain event contract. `lib:event:core` owns transport
-and framework integration.
+Moduł domenowy, który jedynie definiuje zdarzenie, używa event:common:
 
-Events are routed by event type and source. Every `DomainEvent` that participates
-in routing must have `@Topic`.
+~~~kotlin
+dependencies {
+    api(project(":lib:event:common"))
+}
+~~~
 
-## Event example
+Kod aplikacyjny, który publikuje zdarzenia, używa wyłącznie event:api:
 
-```java
+~~~kotlin
+dependencies {
+    implementation(project(":lib:event:api"))
+}
+~~~
+
+W konfiguracji aplikacji zaimportuj publiczny punkt wejścia Eventu:
+
+~~~java
+import com.ravcube.lib.event.publisher.ConfigRoutingEventPublisher;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
+
+@Configuration
+@Import(ConfigRoutingEventPublisher.class)
+class EventConfiguration {
+}
+~~~
+
+Ta konfiguracja rejestruje EventPublisher, routing listenerów i backend loggera.
+Jeżeli aplikacja korzysta z listenerów transportu Kafka, dołącz również ich
+opcjonalną konfigurację:
+
+~~~java
+import com.ravcube.lib.event.config.ConfigKafkaEventListeners;
+import org.springframework.context.annotation.Import;
+
+@Import(ConfigKafkaEventListeners.class)
+class EventKafkaConfiguration {
+}
+~~~
+
+`ConfigKafkaEventListeners` jest potrzebna tylko wtedy, gdy profil `kafka` jest
+aktywny i aplikacja ma listenery dziedziczące po `DefaultKafkaCommitListener`
+lub `DefaultKafkaRollbackListener`. Dzięki temu samo użycie EventPublishera nie
+uruchamia pustych kontenerów Kafka.
+
+event:api udostępnia kontrakty z event:common oraz publiczne punkty rozszerzeń z
+event:core. EventPublisher fizycznie należy do event:common, dzięki czemu core
+może go implementować bez zależności zwrotnej do api. Serwis zależny od
+event:api może bez dodatkowej zależności rozszerzać klasy Default...Publisher i
+Default...Listener. Kod biznesowy nie powinien korzystać bezpośrednio z klas
+routingu ani adapterów Kafka.
+
+Typy Spring i Kafka wymagane przez publiczne publishery oraz listenery są
+eksportowane tranzytywnie przez event:api. Konsument nie musi powtarzać tych
+zależności wyłącznie po to, aby skompilować własne rozszerzenie Eventu.
+
+## Pierwsze użycie
+
+1. Zdefiniuj niezmienny typ zdarzenia i przypisz mu topic.
+2. Zarejestruj publisher oraz listener dla potrzebnego sposobu dostarczenia.
+3. Opublikuj zdarzenie wewnątrz transakcji przez EventPublisher.
+
+~~~java
+import com.ravcube.lib.event.DomainEvent;
+import com.ravcube.lib.event.annotation.Topic;
+
 @Topic("policy.created")
 public record PolicyCreated(String policyId) implements DomainEvent {
 
@@ -29,112 +96,167 @@ public record PolicyCreated(String policyId) implements DomainEvent {
         return policyId;
     }
 }
-```
+~~~
 
-## Publisher example
+Poniższa para obsługuje zdarzenie lokalnie po zatwierdzeniu transakcji:
 
-```java
+~~~java
+import com.ravcube.lib.event.listener.DefaultCommitListener;
+import com.ravcube.lib.event.publisher.DefaultCommitPublisher;
+import org.springframework.stereotype.Component;
+
 @Component
 class PolicyCreatedPublisher extends DefaultCommitPublisher<PolicyCreated> {
 }
-```
 
-## Spring commit hook and Kafka delivery
-
-The public entry point remains `EventPublisher`. For a Kafka publisher the
-library uses Spring's transaction lifecycle only as an `AFTER_COMMIT` trigger:
-
-```text
-EventPublisher.publish(event)
-    -> Spring transaction event hook
-    -> Kafka producer
-    -> Kafka consumer
-```
-
-Spring is not the cross-pod delivery mechanism. The record is delivered between
-processes by Kafka. A rollback prevents the Kafka publication because the
-publisher runs after commit.
-
-Stream uses a direct Kafka listener with a service-scoped topic and a
-pod-specific consumer group. This keeps Stream's topic out of the generic event
-listener used by unrelated event types.
-
-## Scoped Kafka topic
-
-The default Kafka publisher uses the topic from `Topic`. A specialized
-publisher may override `baseTopic(event)` when one event family must be
-isolated per service:
-
-```java
-@Component
-@Profile("kafka")
-final class ServiceRefreshPublisher extends DefaultKafkaPublisher<ServiceRefresh> {
-
-    @Override
-    protected String baseTopic(ServiceRefresh event) {
-        return "service.refresh." + serviceName;
-    }
-}
-```
-
-The publisher still uses the Kafka commit suffix. The matching listener must
-subscribe to the same resolved topic. This extension is opt-in and does not
-change the topic resolution of existing publishers.
-
-## Listener example
-
-```java
 @Component
 class PolicyCreatedListener extends DefaultCommitListener<PolicyCreated> {
 
     @Override
     public void on(PolicyCreated event) {
-        // handle event after transaction commit
+        // lokalna reakcja na utworzenie polisy
     }
 }
-```
+~~~
 
-## Explain
+~~~java
+import com.ravcube.lib.event.api.EventPublisher;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-Use commit publishers/listeners when the event should be visible only after a
-successful transaction. Use rollback variants only for behavior that explicitly
-belongs to a failed transaction path.
+@Service
+class PolicyService {
 
-## Event sources
+    private final EventPublisher eventPublisher;
 
-| Source | Publisher/listener type | Topic behavior |
-| --- | --- | --- |
-| `SPRING_AFTER_COMMIT` | `DefaultCommitPublisher`, `DefaultCommitListener` | In-process after transaction commit. |
-| `SPRING_AFTER_ROLLBACK` | `DefaultRollbackPublisher`, `DefaultRollbackListener` | In-process after transaction rollback. |
-| `KAFKA_AFTER_COMMIT` | `DefaultKafkaPublisher`, `DefaultKafkaCommitListener` | Kafka topic `<topic>.commit`. |
-| `KAFKA_AFTER_ROLLBACK` | `DefaultKafkaRollbackPublisher`, `DefaultKafkaRollbackListener` | Kafka topic `<topic>.rollback`. |
+    PolicyService(EventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
+    }
 
-Kafka records use `DomainEvent.getKey()` as the record key. The default key is
-an empty string, so domain events that need partitioning or ordering should
-override `getKey()`.
+    @Transactional
+    void create(String policyId) {
+        // zapis polisy
+        eventPublisher.publish(new PolicyCreated(policyId));
+    }
+}
+~~~
 
-## Kafka configuration
+Jeżeli dla typu zdarzenia nie ma zarejestrowanego publishera, publikacja jest
+pomijana. Publisher należy więc rejestrować razem z obsługą zdarzenia.
 
-Enable Kafka transport with the `kafka` Spring profile.
+## Przepływ lokalny
 
-```yaml
+~~~mermaid
+sequenceDiagram
+    participant Service as Serwis domenowy
+    participant Publisher as EventPublisher
+    participant Spring as Cykl transakcji
+    participant Handler as Listener
+
+    Service->>Publisher: publish(PolicyCreated)
+    Publisher->>Spring: zdarzenie aplikacyjne
+    Spring-->>Handler: AFTER_COMMIT
+    Handler->>Handler: reakcja
+~~~
+
+DefaultCommitPublisher przekazuje zdarzenie do Spring, a
+DefaultCommitListener otrzymuje je w fazie AFTER_COMMIT. Rollback nie uruchamia
+takiego listenera. Dla zachowania związanego wyłącznie z rollbackiem użyj
+DefaultRollbackPublisher i DefaultRollbackListener.
+
+## Kafka
+
+Kafka włączasz profilem kafka:
+
+~~~yaml
 spring:
   profiles:
     active: kafka
-```
+~~~
 
-Default properties are namespaced under `ravcube.kafka.*` and mapped into Spring
-Kafka listener, producer, and consumer settings. Important defaults:
+Dla komunikacji przez Kafka rejestruj publisher oraz listener w tym profilu:
 
-| Property | Default |
+~~~java
+import com.ravcube.lib.event.listener.DefaultKafkaCommitListener;
+import com.ravcube.lib.event.publisher.DefaultKafkaPublisher;
+import org.springframework.context.annotation.Profile;
+import org.springframework.stereotype.Component;
+
+@Component
+@Profile("kafka")
+class PolicyCreatedKafkaPublisher extends DefaultKafkaPublisher<PolicyCreated> {
+}
+
+@Component
+@Profile("kafka")
+class PolicyCreatedKafkaListener extends DefaultKafkaCommitListener<PolicyCreated> {
+
+    @Override
+    public void on(PolicyCreated event) {
+        // reakcja po odbiorze rekordu Kafka
+    }
+}
+~~~
+
+Dla KAFKA_AFTER_COMMIT zdarzenie jest wysyłane po zatwierdzeniu transakcji na
+topic `<wartość @Topic>.commit`. DomainEvent.getKey() jest kluczem rekordu Kafka;
+domyślnie zwraca pusty łańcuch. Nadpisz go, gdy partycjonowanie lub kolejność
+dla konkretnej encji mają znaczenie.
+
+~~~mermaid
+sequenceDiagram
+    participant Service as Serwis domenowy
+    participant Spring as Cykl transakcji
+    participant Kafka as Kafka
+    participant Handler as Listener Kafka
+
+    Service->>Spring: publish(PolicyCreated)
+    Spring->>Kafka: AFTER_COMMIT, policy.created.commit
+    Kafka-->>Handler: PolicyCreated
+~~~
+
+| Sposób dostarczenia | Publisher | Listener | Moment wywołania / topic |
+| --- | --- | --- | --- |
+| Lokalnie po commit | DefaultCommitPublisher | DefaultCommitListener | AFTER_COMMIT w tej samej JVM. |
+| Lokalnie po rollbacku | DefaultRollbackPublisher | DefaultRollbackListener | AFTER_ROLLBACK w tej samej JVM. |
+| Kafka po commit | DefaultKafkaPublisher | DefaultKafkaCommitListener | `<topic>.commit` po zatwierdzeniu transakcji. |
+| Kafka po rollbacku | DefaultKafkaRollbackPublisher | DefaultKafkaRollbackListener | `<topic>.rollback` po wycofaniu transakcji. |
+
+Domyślna grupa konsumentów Eventu, event-core-kafka, obsługuje zwykłe zdarzenia
+konkurencyjnie; nie jest mechanizmem broadcastu do każdego poda. Stream ma
+własny topic i grupę konsumentów, ponieważ refresh SSE musi trafić do każdego
+poda utrzymującego lokalne połączenia klientów.
+
+## Konfiguracja Kafka i jej właściciel
+
+event:core jest właścicielem wspólnych domyślnych ustawień Kafka w
+application-kafka.yml. Aplikacja ustawia połączenie z własnym brokerem, na
+przykład spring.kafka.bootstrap-servers. Stream nie nadpisuje tej konfiguracji;
+posiada wyłącznie usługowe ustawienia topicu, grupy i polityki odbioru refreshy.
+
+| Właściwość | Domyślna wartość |
 | --- | --- |
-| `ravcube.kafka.listener.auto-startup` | `true` |
-| `ravcube.kafka.listener.missing-topics-fatal` | `false` |
-| `ravcube.kafka.consumer.group-id` | `event-core-kafka` |
-| `ravcube.kafka.consumer.auto-offset-reset` | `latest` |
-| `ravcube.kafka.consumer.trusted-packages` | `*` |
+| ravcube.kafka.listener.auto-startup | true dla profilu kafka |
+| ravcube.kafka.listener.missing-topics-fatal | false |
+| ravcube.kafka.consumer.group-id | event-core-kafka |
+| ravcube.kafka.consumer.auto-offset-reset | latest |
+| ravcube.kafka.consumer.trusted-packages | * |
 
-## Design warning
+Serializacja producenta i deserializacja konsumenta są domyślnie oparte o
+Springowy JSON. W produkcji zawęź ravcube.kafka.consumer.trusted-packages do
+pakietów zdarzeń aplikacji; wartość * jest zgodna wstecznie, lecz zbyt szeroka.
 
-Do not publish anonymous maps or strings when the event is part of the domain.
-Create a typed `DomainEvent` with an explicit topic.
+## Zgodność migracji
+
+DomainEvent, @Topic i EventPublisher zachowały nazwy pakietów. Moduł domenowy
+zmienia wyłącznie zależność Gradle z event:api na event:common. Kod publikujący
+dodaje event:api, który udostępnia kontrakt z event:common i składa go z
+implementacją event:core. Import punktu wejścia pozostaje bez zmian:
+com.ravcube.lib.event.api.EventPublisher. Poprzedni import z błędnie nazwanej
+paczki inteface jest zachowany jako przestarzały alias do stopniowej migracji.
+
+Niskopoziomowy SPI routingu nie jest już częścią event:api. Kod, który
+bezpośrednio implementował AbstractListener, AbstractPublisher lub korzystał z
+EventSource, powinien zależeć od event:core i przejść na klasy z pakietu
+com.ravcube.lib.event.routing. W typowych przypadkach wystarczą gotowe klasy
+Default...Publisher i Default...Listener pokazane wyżej.

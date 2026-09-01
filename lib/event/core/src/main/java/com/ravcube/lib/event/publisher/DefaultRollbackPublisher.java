@@ -1,17 +1,17 @@
 package com.ravcube.lib.event.publisher;
 
 import com.ravcube.lib.event.DomainEvent;
-import com.ravcube.lib.event.inteface.EventListener;
-import com.ravcube.lib.event.enums.EventSource;
+import com.ravcube.lib.event.routing.EventRouter;
+import com.ravcube.lib.event.routing.EventSource;
 import org.springframework.beans.factory.annotation.Autowired;
 
 public class DefaultRollbackPublisher<E extends DomainEvent> extends AbstractRollbackPublisher<E> {
 
-    private EventListener eventListener;
+    private EventRouter eventRouter;
 
     @Override
     protected void on(E event) {
-        eventListener.on(source(), event);
+        eventRouter.on(source(), event);
     }
 
     @Override
@@ -20,8 +20,8 @@ public class DefaultRollbackPublisher<E extends DomainEvent> extends AbstractRol
     }
 
     @Autowired
-    private void setRoutingEventListener(EventListener eventListener) {
-        this.eventListener = eventListener;
+    private void setEventRouter(EventRouter eventRouter) {
+        this.eventRouter = eventRouter;
     }
 
 

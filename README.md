@@ -13,6 +13,12 @@ Serve the documentation locally:
 .\\gradlew.bat doc-dev
 ```
 
+On Linux or macOS:
+
+```bash
+./gradlew doc-dev
+```
+
 `doc-dev` stops the previous documentation container for the selected port before
 starting a new one.
 
@@ -37,6 +43,12 @@ Build a static website:
 .\\gradlew.bat doc-build
 ```
 
+On Linux or macOS:
+
+```bash
+./gradlew doc-build
+```
+
 Documentation tooling runs in Docker or Podman. A local Python installation is
 not required.
 
@@ -53,3 +65,10 @@ container executable explicitly:
 ```powershell
 .\\gradlew.bat doc-dev -PcontainerCommand="C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe"
 ```
+
+On Linux or macOS:
+
+```bash
+./gradlew doc-dev -PcontainerCommand=docker
+```
+

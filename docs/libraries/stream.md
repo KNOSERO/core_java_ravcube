@@ -26,7 +26,26 @@ dependencies {
 
 Aplikacja korzystająca z biblioteki musi mieć dostęp do Kafka dla profilu
 kafka. Nie należy dodawać bezpośredniej zależności na stream:core; implementacja
-SSE pozostaje szczegółem biblioteki.
+SSE pozostaje szczegółem biblioteki. stream:api udostępnia również fasadę
+event:api, dlatego aplikacja może wstrzyknąć EventPublisher bez dodawania osobnej
+zależności Eventu.
+
+W konfiguracji aplikacji zaimportuj jeden publiczny punkt wejścia Streamu:
+
+~~~java
+import com.ravcube.lib.stream.config.ClientStreamApiConfiguration;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
+
+@Configuration
+@Import(ClientStreamApiConfiguration.class)
+class StreamConfiguration {
+}
+~~~
+
+ClientStreamApiConfiguration składa implementację stream:core, konfigurację
+Eventu i backend loggera. Kod usługi nie powinien importować konfiguracji ani
+klas implementacyjnych z tych modułów bezpośrednio.
 
 ## Pierwsze użycie
 
@@ -180,6 +199,12 @@ Listener Stream korzysta z osobnej fabryki Kafka. Dziedziczy z fabryki aplikacji
 consumer factory oraz najważniejsze ustawienia kontenera, a nadpisuje tylko
 concurrency i error handling Stream.
 
+Wspólna konfiguracja połączenia, serializacji i domyślnej grupy Kafka należy do
+`lib:event:core` (`ravcube.kafka.*`). Stream nie nadpisuje tych wartości;
+konfiguruje wyłącznie własny topic oraz grupę konsumencką wyprowadzane z
+`spring.application.name`, `ravcube.stream.kafka.service-name` i
+`ravcube.stream.kafka.instance-id`.
+
 Stream wykonuje maksymalnie trzy próby publikacji z jednosekundowym backoffem.
 Po wyczerpaniu prób powiadomienie jest traktowane jako utracone i rejestrowane w
 metryce. Jest to kanał best-effort notification, a nie trwała historia zdarzeń.
@@ -223,3 +248,7 @@ HTTP subscription
 
 Weryfikowane są także routing do właściwej subskrypcji oraz brak refreshu po
 rollbacku. Testy nie zastępują tych granic mockami.
+
+Testowa aplikacja importuje wyłącznie ClientStreamApiConfiguration. Dzięki temu
+test wykrywa brakujący element publicznej fasady zamiast maskować go szerokim
+skanowaniem pakietów stream i event.

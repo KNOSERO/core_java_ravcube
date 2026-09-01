@@ -57,6 +57,16 @@ public class SecurityApiScenarioClient {
         });
     }
 
+    public FeignException expectClientError(FeignCall call) {
+        return untilSucceeds(WAIT_TIMEOUT, RETRY_DELAY, () -> {
+            FeignException exception = expectFeignException(call);
+            if (exception.status() < 400 || exception.status() >= 500) {
+                throw new AssertionError("Expected a client error, got HTTP " + exception.status());
+            }
+            return exception;
+        });
+    }
+
     public FeignException expectFeignException(FeignCall call) {
         try {
             call.execute();

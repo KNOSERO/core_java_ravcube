@@ -152,7 +152,7 @@ function Get-ContainerIdsPublishingPort {
 function Build-DocsImage {
     param([string] $Command)
 
-    Invoke-Container $Command @("build", "-f", "docs-site/Dockerfile", "-t", $Image, ".")
+    Invoke-Container $Command @("build", "--target", "docs-runtime", "-f", "docs-site/Dockerfile", "-t", $Image, ".")
 }
 
 function Stop-DocsContainers {
@@ -174,16 +174,16 @@ function Stop-DocsContainers {
 function Invoke-StaticSiteBuild {
     param([string] $Command)
 
+    Remove-Item -LiteralPath "docs-site/build" -Recurse -Force -ErrorAction SilentlyContinue
     Invoke-Container $Command @(
-        "run",
-        "--rm",
-        "--mount",
-        "type=bind,source=$WorkspacePath,target=/workspace",
-        "-w",
-        "/workspace/docs-site",
-        $Image,
-        "docusaurus",
-        "build"
+        "build",
+        "--target",
+        "docs-export",
+        "--output",
+        "type=local,dest=docs-site/build",
+        "-f",
+        "docs-site/Dockerfile",
+        "."
     )
 }
 

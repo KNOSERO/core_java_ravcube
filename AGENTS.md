@@ -53,14 +53,57 @@ should not own business policy.
 
 ## Module Boundary Policy
 
-- Use an `api` module for contracts that other modules should depend on.
-- Use a `core` module for concrete Spring, Redis, Kafka, Elasticsearch,
-  Keycloak, Eureka, HTTP, or SSE implementation.
+- For a three-module library, use `common` for stable, transport-neutral public
+  contracts, `core` for implementation, and `api` as the consumer-facing
+  composition root.
+- Keep the dependency direction explicit: `api -> core`, `api -> common`, and
+  `core -> common`. `core` must never depend on its own `api`, and `common`
+  must never depend on its own `api` or `core`.
+- A `common` module may depend only on `lib:common` or another library's
+  `common` module. It must not contain Spring, Kafka, HTTP, persistence, or
+  another transport implementation.
+- A `core` module must not depend on another library's `core`. It consumes a
+  stable `api` or `common` contract; concrete backends are assembled by the
+  consumer-facing `api` module.
+- Public extension classes may be implemented in `core`, but `api` must export
+  them when downstream services are expected to extend or reference them.
+- Consumers use the library's `api` module. They use `common` directly only to
+  define a shared contract without installing the implementation.
+- Focused single-module libraries are allowed when splitting them would create
+  empty layers. Existing two-module libraries keep their current contract until
+  a dedicated migration introduces a real `common` contract and composition
+  root; do not silently reverse their dependencies in an unrelated change.
 - If two modules could own a change, choose the module closest to the stable
   contract.
-- Put framework adapters in `core` modules and reusable contracts in `api`
-  modules.
+- Put framework adapters in `core` modules and reusable neutral contracts in
+  `common` modules.
 - Do not add module-local abstractions that duplicate shared contracts.
+
+### Mandatory library structure workflow
+
+Before changing a module under `lib/`, write a short responsibility map for
+the affected family:
+
+```text
+common: public neutral contracts
+core: implementation and technical adapters
+api: consumer entry point, configuration, and exported extension surface
+```
+
+Then:
+
+1. Search production and test imports before moving a public type.
+2. Decide whether the type is a neutral contract, implementation, composition
+   configuration, or intentional public extension point.
+3. Update Gradle dependencies before production code so the intended direction
+   is visible in the module graph.
+4. Add or update a consumer-boundary test in `api`; it must depend only on the
+   public module a real service uses.
+5. Run `./gradlew :lib:verifyLibraryStructure` before module tests. This task is
+   also part of every library `check` task and rejects reversed dependencies,
+   implementation-to-implementation leakage, and production cycles.
+6. Run the narrowest affected tests, then the complete `check` task. A change
+   is not complete while either verification is red.
 
 ## Language Policy
 
@@ -196,9 +239,9 @@ focus on module purpose, architecture decisions, examples, and usage.
 ## Change Workflow
 
 - Read the relevant module and tests before editing.
-- - Make the smallest coherent change that satisfies the task.
+- Make the smallest coherent change that satisfies the task.
 - Add or update tests at the right level.
-- - Run the narrowest relevant test task first, then broader checks when the
+- Run the narrowest relevant test task first, then broader checks when the
   change affects shared behavior.
 - For documentation changes, run `.\gradlew.bat doc-build` when container tooling
   is available. If it cannot be run, report the exact missing runtime or failure.

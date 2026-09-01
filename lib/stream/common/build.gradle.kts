@@ -3,7 +3,7 @@ plugins {
 }
 
 dependencies {
-    api(project(":lib:event:api"))
+    api(project(":lib:event:common"))
 
     testImplementation(libs.junit.jupiter)
     runtimeOnly(libs.junit.launcher)

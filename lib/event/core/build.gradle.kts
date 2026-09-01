@@ -5,8 +5,8 @@ plugins {
 
 dependencies {
     implementation(project(":lib:common"))
-    api(project(":lib:event:api"))
-    implementation(project(":lib:logger:core"))
+    api(project(":lib:event:common"))
+    api(project(":lib:logger:api"))
     implementation(libs.jackson.databind)
     api(libs.spring.context)
     api(libs.spring.kafka)
@@ -14,8 +14,5 @@ dependencies {
 
     testImplementation(libs.junit.jupiter)
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
-    testImplementation(project(":test:common"))
-    testImplementation(project(":test:kafka"))
-    testImplementation(libs.spring.test)
     runtimeOnly(libs.junit.launcher)
 }
