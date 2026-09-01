@@ -95,6 +95,8 @@ pipeline {
                         echo "DOCKER_HOST=${DOCKER_HOST}"
                         echo "TESTCONTAINERS_HOST_OVERRIDE=${TESTCONTAINERS_HOST_OVERRIDE}"
                         docker version
+                        export CI=true
+                        export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS:-} -Ddocker.client.strategy=${TESTCONTAINERS_DOCKER_CLIENT_STRATEGY} -Ddocker.host=${DOCKER_HOST} -Dtestcontainers.host.override=${TESTCONTAINERS_HOST_OVERRIDE}"
                         bash ./gradlew --no-daemon test
                     '''
                 }
