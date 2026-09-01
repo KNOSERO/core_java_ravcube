@@ -28,7 +28,7 @@ junit-jupiter-engine = "5.11.3"
 junit-platform = "1.11.3"
 lombok = "1.18.34"
 mockito-core = "5.10.0"
-testcontainers = "1.20.4"
+testcontainers = "2.0.5"
 
 [libraries]
 # Blaze Persistence
@@ -81,10 +81,10 @@ spring-kafka = { module = "org.springframework.kafka:spring-kafka", version.ref 
 spring-test = { module = "org.springframework.boot:spring-boot-starter-test", version.ref = "spring-boot" }
 spring-tx = { module = "org.springframework:spring-tx", version.ref = "spring-framework" }
 spring-web = { module = "org.springframework.boot:spring-boot-starter-web", version.ref = "spring-boot" }
-testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
-testcontainers-junit-jupiter = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }
-testcontainers-kafka = { module = "org.testcontainers:kafka", version.ref = "testcontainers" }
-testcontainers-elasticsearch = { module = "org.testcontainers:elasticsearch", version.ref = "testcontainers" }
+testcontainers-postgresql = { module = "org.testcontainers:testcontainers-postgresql", version.ref = "testcontainers" }
+testcontainers-junit-jupiter = { module = "org.testcontainers:testcontainers-junit-jupiter", version.ref = "testcontainers" }
+testcontainers-kafka = { module = "org.testcontainers:testcontainers-kafka", version.ref = "testcontainers" }
+testcontainers-elasticsearch = { module = "org.testcontainers:testcontainers-elasticsearch", version.ref = "testcontainers" }
 
 # Test and annotation tooling
 awaitility = { module = "org.awaitility:awaitility", version.ref = "awaitility" }
