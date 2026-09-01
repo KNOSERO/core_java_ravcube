@@ -17,6 +17,7 @@ pipeline {
         DOCKER_BUILDKIT = '1'
         DOCKER_HOST = 'tcp://home.ravnet:2375'
         TESTCONTAINERS_HOST_OVERRIDE = 'home.ravnet'
+        TESTCONTAINERS_DOCKER_CLIENT_STRATEGY = 'org.testcontainers.dockerclient.EnvironmentAndSystemPropertyClientProviderStrategy'
     }
     stages {
         stage('Init ENV') {
@@ -90,6 +91,10 @@ pipeline {
             steps {
                 script {
                     sh '''
+                        set -eu
+                        echo "DOCKER_HOST=${DOCKER_HOST}"
+                        echo "TESTCONTAINERS_HOST_OVERRIDE=${TESTCONTAINERS_HOST_OVERRIDE}"
+                        docker version
                         bash ./gradlew --no-daemon test
                     '''
                 }
